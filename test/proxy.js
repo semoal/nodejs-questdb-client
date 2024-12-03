@@ -1,7 +1,5 @@
-'use strict';
-
-const { Socket } = require('net');
-const { write, listen, shutdown, connect, close } = require('./proxyfunctions');
+import { Socket } from 'node:net';
+import { write, listen, shutdown, connect, close } from './proxyfunctions';
 
 // handles only a single client
 // client -> server (Proxy) -> remote (QuestDB)
@@ -44,4 +42,6 @@ class Proxy {
     }
 }
 
-exports.Proxy = Proxy;
+export {
+    Proxy,
+}

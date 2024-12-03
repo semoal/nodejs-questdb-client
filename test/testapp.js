@@ -1,8 +1,7 @@
-'use strict';
+import { readFileSync } from 'node:fs';
 
-const { Proxy } = require('./proxy');
-const { Sender } = require('../index');
-const { readFileSync } = require('fs');
+import { Proxy } from './proxy';
+import { Sender } from '../index';
 
 const PROXY_PORT = 9099;
 const PORT = 9009;

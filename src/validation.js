@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Validates a table name. <br>
  * Throws an error if table name is invalid.
@@ -119,5 +117,7 @@ function validateColumnName(name, maxNameLength) {
     }
 }
 
-exports.validateTableName = validateTableName;
-exports.validateColumnName = validateColumnName;
+export {
+    validateTableName,
+    validateColumnName,
+}

@@ -1,7 +1,5 @@
-'use strict';
-
-const http = require('http');
-const https = require('https');
+import http from 'node:http';
+import https from 'node:https';
 
 class MockHttp {
     server;
@@ -60,10 +58,11 @@ function checkAuthHeader(mockConfig, req) {
     let authFailed = false;
     const header = (req.headers.authorization || '').split(/\s+/);
     switch (header[0]) {
-        case 'Basic':
-            const auth = Buffer.from(header[1], 'base64').toString().split(/:/);
-            if (mockConfig.username !== auth[0] || mockConfig.password !== auth[1]) {
-                authFailed = true;
+        case 'Basic': {
+                const auth = Buffer.from(header[1], 'base64').toString().split(/:/);
+                if (mockConfig.username !== auth[0] || mockConfig.password !== auth[1]) {
+                    authFailed = true;
+                }
             }
             break;
         case 'Bearer':
@@ -83,4 +82,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-exports.MockHttp = MockHttp;
+export {
+    MockHttp,
+}

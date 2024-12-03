@@ -1,11 +1,9 @@
-'use strict';
-
 /**
  * A Node.js client for QuestDB.
  *
  * @module @questdb/nodejs-client
  */
 
-const { Sender } = require('./src/sender');
+import { Sender } from './src/sender';
 
-module.exports = { Sender };
+export { Sender };

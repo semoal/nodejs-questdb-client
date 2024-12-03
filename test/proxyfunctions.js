@@ -1,7 +1,5 @@
-'use strict';
-
-const net = require('net');
-const tls = require('tls');
+import net from 'node:net';
+import tls from "node:tls"
 
 const LOCALHOST = 'localhost';
 
@@ -66,8 +64,11 @@ async function close(proxy) {
     });
 }
 
-exports.write = write;
-exports.listen = listen;
-exports.shutdown = shutdown;
-exports.connect = connect;
-exports.close = close;
+export {
+    write,
+    listen,
+    shutdown,
+    connect,
+    close,
+}
+

@@ -1,5 +1,3 @@
-'use strict';
-
 const LOG_LEVELS = {
     error: { log: console.error, criticality: 3 },
     warn: { log: console.warn, criticality: 2 },
@@ -27,4 +25,6 @@ function log(level, message) {
     }
 }
 
-exports.log = log;
+export {
+    log,
+}

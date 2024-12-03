@@ -1,7 +1,6 @@
-'use strict';
-
-const { SenderOptions } = require('../src/options');
-const http = require("http");
+import { describe, it, expect } from "vitest"
+import http from "node:http";
+import { SenderOptions } from "../src/options"
 
 describe('Configuration string parser suite', function () {
     it('can parse a basic config string', function () {

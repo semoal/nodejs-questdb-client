@@ -1,15 +1,15 @@
-'use strict';
+import { describe, it, beforeAll, afterAll, afterEach, expect, vi } from "vitest"
 
 describe('Default logging suite', function () {
     let error, warn, info, debug;
     let log;
 
-    beforeAll(() => {
-        error = jest.spyOn(console, 'error').mockImplementation(() => {});
-        warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-        info = jest.spyOn(console, 'info').mockImplementation(() => {});
-        debug = jest.spyOn(console, 'debug').mockImplementation(() => {});
-        log = require('../src/logging').log;
+    beforeAll(async () => {
+        error = vi.spyOn(console, 'error').mockImplementation(() => {});
+        warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        info = vi.spyOn(console, 'info').mockImplementation(() => {});
+        debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+        log = (await import('../src/logging')).log;
     });
 
     afterAll(() => {

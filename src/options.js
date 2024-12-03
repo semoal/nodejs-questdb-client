@@ -1,7 +1,5 @@
-'use strict';
-
-const http = require('http');
-const https = require('https');
+import http from 'node:http';
+import https from 'node:https';
 
 const HTTP_PORT = 9000;
 const TCP_PORT = 9009;
@@ -409,8 +407,10 @@ function parseInteger(options, property, description, lowerBound) {
     }
 }
 
-exports.SenderOptions = SenderOptions;
-exports.HTTP = HTTP;
-exports.HTTPS = HTTPS;
-exports.TCP = TCP;
-exports.TCPS = TCPS;
+export {
+    SenderOptions,
+    HTTP,
+    HTTPS,
+    TCP,
+    TCPS
+}

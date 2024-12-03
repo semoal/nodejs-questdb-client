@@ -1,17 +1,14 @@
-'use strict';
+import { readFileSync } from 'node:fs';
+import { Buffer } from 'node:buffer';
+import { log } from './logging';
+import http from 'node:http';
+import https from 'node:https';
+import net from 'node:net';
+import tls from 'node:tls';
+import crypto from 'node:crypto';
 
-/* eslint-disable no-unused-vars */
-
-const { readFileSync } = require("fs");
-const { Buffer } = require('buffer');
-const { log } = require('./logging');
-const { validateTableName, validateColumnName } = require('./validation');
-const { SenderOptions, HTTP, HTTPS, TCP, TCPS } = require('./options');
-const http = require('http');
-const https = require('https');
-const net = require('net');
-const tls = require('tls');
-const crypto = require('crypto');
+import { validateTableName, validateColumnName } from './validation';
+import { SenderOptions, HTTP, HTTPS, TCP, TCPS } from './options';
 
 const HTTP_NO_CONTENT = 204; // success
 
@@ -958,6 +955,4 @@ function constructJwk(options) {
     }
 }
 
-exports.Sender = Sender;
-exports.DEFAULT_BUFFER_SIZE = DEFAULT_BUFFER_SIZE;
-exports.DEFAULT_MAX_BUFFER_SIZE = DEFAULT_MAX_BUFFER_SIZE;
+export { Sender, DEFAULT_BUFFER_SIZE, DEFAULT_MAX_BUFFER_SIZE };

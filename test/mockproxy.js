@@ -1,6 +1,4 @@
-'use strict';
-
-const { write, listen, shutdown } = require('./proxyfunctions');
+import { write, listen, shutdown } from './proxyfunctions';
 
 const CHALLENGE_LENGTH = 512;
 
@@ -46,4 +44,6 @@ function mockChallenge() {
     return challenge + '\n';
 }
 
-exports.MockProxy = MockProxy;
+export {
+    MockProxy,
+}
