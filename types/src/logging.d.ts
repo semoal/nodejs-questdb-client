@@ -6,5 +6,8 @@
  * @param {'error'|'warn'|'info'|'debug'} level - The log level of the message.
  * @param {string} message - The log message.
  */
-export function log(level: 'error' | 'warn' | 'info' | 'debug', message: string): void;
+export function log(
+  level: "error" | "warn" | "info" | "debug",
+  message: string,
+): void;
 //# sourceMappingURL=logging.d.ts.map

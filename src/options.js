@@ -1,17 +1,16 @@
-import http from 'node:http';
-import https from 'node:https';
+import { Agent } from "undici";
 
 const HTTP_PORT = 9000;
 const TCP_PORT = 9009;
 
-const HTTP = 'http';
-const HTTPS = 'https';
-const TCP = 'tcp';
-const TCPS = 'tcps';
+const HTTP = "http";
+const HTTPS = "https";
+const TCP = "tcp";
+const TCPS = "tcps";
 
-const ON = 'on';
-const OFF = 'off';
-const UNSAFE_OFF = 'unsafe_off';
+const ON = "on";
+const OFF = "off";
+const UNSAFE_OFF = "unsafe_off";
 
 /** @classdesc
  * <a href="Sender.html">Sender</a> configuration options. <br>
@@ -113,304 +112,327 @@ const UNSAFE_OFF = 'unsafe_off';
  * </ul>
  */
 class SenderOptions {
+  protocol;
+  addr;
+  host; // derived from addr
+  port; // derived from addr
 
-    protocol;
-    addr;
-    host; // derived from addr
-    port; // derived from addr
+  // replaces `auth` and `jwk` options
+  username;
+  password;
+  token;
+  token_x; // allowed, but ignored
+  token_y; // allowed, but ignored
 
-    // replaces `auth` and `jwk` options
-    username;
-    password;
-    token;
-    token_x; // allowed, but ignored
-    token_y; // allowed, but ignored
+  auto_flush;
+  auto_flush_rows;
+  auto_flush_interval;
 
-    auto_flush;
-    auto_flush_rows;
-    auto_flush_interval;
+  // replaces `copyBuffer` option
+  copy_buffer;
 
-    // replaces `copyBuffer` option
-    copy_buffer;
+  request_min_throughput;
+  request_timeout;
+  retry_timeout;
 
-    request_min_throughput;
-    request_timeout;
-    retry_timeout;
+  // replaces `bufferSize` option
+  init_buf_size;
+  max_buf_size;
 
-    // replaces `bufferSize` option
-    init_buf_size;
-    max_buf_size;
+  tls_verify;
+  tls_ca;
+  tls_roots; // not supported
+  tls_roots_password; // not supported
 
-    tls_verify;
-    tls_ca;
-    tls_roots;          // not supported
-    tls_roots_password; // not supported
+  max_name_len;
 
-    max_name_len;
+  log;
+  agent;
 
-    log;
-    agent;
+  /**
+   * Creates a Sender options object by parsing the provided configuration string.
+   *
+   * @param {string} configurationString - Configuration string. <br>
+   * @param {object} extraOptions - Optional extra configuration. <br>
+   * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
+   * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
+   * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
+   * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
+   */
+  constructor(configurationString, extraOptions = undefined) {
+    parseConfigurationString(this, configurationString);
 
-    /**
-     * Creates a Sender options object by parsing the provided configuration string.
-     *
-     * @param {string} configurationString - Configuration string. <br>
-     * @param {object} extraOptions - Optional extra configuration. <br>
-     * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
-     * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
-     * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
-     * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
-     */
-    constructor(configurationString, extraOptions = undefined) {
-        parseConfigurationString(this, configurationString);
+    if (extraOptions) {
+      if (extraOptions.log && typeof extraOptions.log !== "function") {
+        throw new Error("Invalid logging function");
+      }
+      this.log = extraOptions.log;
 
-        if (extraOptions) {
-            if (extraOptions.log && typeof extraOptions.log !== 'function') {
-                throw new Error('Invalid logging function');
-            }
-            this.log = extraOptions.log;
-
-            if (extraOptions.agent && !(extraOptions.agent instanceof http.Agent) && !(extraOptions.agent instanceof https.Agent)) {
-                throw new Error('Invalid http/https agent');
-            }
-            this.agent = extraOptions.agent;
-        }
+      if (extraOptions.agent && !(extraOptions.agent instanceof Agent)) {
+        throw new Error("Invalid http/https agent");
+      }
+      this.agent = extraOptions.agent;
     }
+  }
 
-    /**
-     * Creates a Sender options object by parsing the provided configuration string.
-     *
-     * @param {string} configurationString - Configuration string. <br>
-     * @param {object} extraOptions - Optional extra configuration. <br>
-     * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
-     * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
-     * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
-     * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
-     *
-     * @return {SenderOptions} A Sender configuration object initialized from the provided configuration string.
-     */
-    static fromConfig(configurationString, extraOptions = undefined) {
-        return new SenderOptions(configurationString, extraOptions);
-    }
+  /**
+   * Creates a Sender options object by parsing the provided configuration string.
+   *
+   * @param {string} configurationString - Configuration string. <br>
+   * @param {object} extraOptions - Optional extra configuration. <br>
+   * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
+   * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
+   * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
+   * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
+   *
+   * @return {SenderOptions} A Sender configuration object initialized from the provided configuration string.
+   */
+  static fromConfig(configurationString, extraOptions = undefined) {
+    return new SenderOptions(configurationString, extraOptions);
+  }
 
-    /**
-     * Creates a Sender options object by parsing the configuration string set in the <b>QDB_CLIENT_CONF</b> environment variable.
-     *
-     * @param {object} extraOptions - Optional extra configuration. <br>
-     * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
-     * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
-     * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
-     * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
-     *
-     * @return {SenderOptions} A Sender configuration object initialized from the <b>QDB_CLIENT_CONF</b> environment variable.
-     */
-    static fromEnv(extraOptions = undefined) {
-        return SenderOptions.fromConfig(process.env.QDB_CLIENT_CONF, extraOptions);
-    }
+  /**
+   * Creates a Sender options object by parsing the configuration string set in the <b>QDB_CLIENT_CONF</b> environment variable.
+   *
+   * @param {object} extraOptions - Optional extra configuration. <br>
+   * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
+   * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
+   * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
+   * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
+   *
+   * @return {SenderOptions} A Sender configuration object initialized from the <b>QDB_CLIENT_CONF</b> environment variable.
+   */
+  static fromEnv(extraOptions = undefined) {
+    return SenderOptions.fromConfig(process.env.QDB_CLIENT_CONF, extraOptions);
+  }
 }
 
 function parseConfigurationString(options, configString) {
-    if (!configString) {
-        throw new Error('Configuration string is missing or empty');
-    }
+  if (!configString) {
+    throw new Error("Configuration string is missing or empty");
+  }
 
-    const position = parseProtocol(options, configString);
-    parseSettings(options, configString, position);
-    parseAddress(options);
-    parseBufferSizes(options);
-    parseAutoFlushOptions(options);
-    parseTlsOptions(options);
-    parseRequestTimeoutOptions(options);
-    parseMaxNameLength(options);
-    parseCopyBuffer(options);
+  const position = parseProtocol(options, configString);
+  parseSettings(options, configString, position);
+  parseAddress(options);
+  parseBufferSizes(options);
+  parseAutoFlushOptions(options);
+  parseTlsOptions(options);
+  parseRequestTimeoutOptions(options);
+  parseMaxNameLength(options);
+  parseCopyBuffer(options);
 }
 
 function parseSettings(options, configString, position) {
-    let index = configString.indexOf(';', position);
-    while (index > -1) {
-        if (index + 1 < configString.length && configString.charAt(index + 1) === ';') {
-            index = configString.indexOf(';', index + 2);
-            continue;
-        }
-
-        parseSetting(options, configString, position, index);
-
-        position = index + 1;
-        index = configString.indexOf(';', position);
+  let index = configString.indexOf(";", position);
+  while (index > -1) {
+    if (
+      index + 1 < configString.length &&
+      configString.charAt(index + 1) === ";"
+    ) {
+      index = configString.indexOf(";", index + 2);
+      continue;
     }
-    if (position < configString.length) {
-        parseSetting(options, configString, position, configString.length);
-    }
+
+    parseSetting(options, configString, position, index);
+
+    position = index + 1;
+    index = configString.indexOf(";", position);
+  }
+  if (position < configString.length) {
+    parseSetting(options, configString, position, configString.length);
+  }
 }
 
 function parseSetting(options, configString, position, index) {
-    const setting = configString.slice(position, index).replaceAll(';;', ';');
-    const equalsIndex = setting.indexOf('=');
-    if (equalsIndex < 0) {
-        throw new Error(`Missing '=' sign in '${setting}'`);
-    }
-    const key = setting.slice(0, equalsIndex);
-    const value = setting.slice(equalsIndex + 1);
-    validateConfigKey(key);
-    validateConfigValue(key, value);
-    options[key] = value;
+  const setting = configString.slice(position, index).replaceAll(";;", ";");
+  const equalsIndex = setting.indexOf("=");
+  if (equalsIndex < 0) {
+    throw new Error(`Missing '=' sign in '${setting}'`);
+  }
+  const key = setting.slice(0, equalsIndex);
+  const value = setting.slice(equalsIndex + 1);
+  validateConfigKey(key);
+  validateConfigValue(key, value);
+  options[key] = value;
 }
 
 const ValidConfigKeys = [
-    'addr',
-    'username', 'password', 'token', 'token_x', 'token_y',
-    'auto_flush', 'auto_flush_rows', 'auto_flush_interval',
-    'copy_buffer',
-    'request_min_throughput', 'request_timeout', 'retry_timeout',
-    'init_buf_size', 'max_buf_size',
-    'max_name_len',
-    'tls_verify', 'tls_ca', 'tls_roots', 'tls_roots_password'
+  "addr",
+  "username",
+  "password",
+  "token",
+  "token_x",
+  "token_y",
+  "auto_flush",
+  "auto_flush_rows",
+  "auto_flush_interval",
+  "copy_buffer",
+  "request_min_throughput",
+  "request_timeout",
+  "retry_timeout",
+  "init_buf_size",
+  "max_buf_size",
+  "max_name_len",
+  "tls_verify",
+  "tls_ca",
+  "tls_roots",
+  "tls_roots_password",
 ];
 
 function validateConfigKey(key) {
-    if (!ValidConfigKeys.includes(key)) {
-        throw new Error(`Unknown configuration key: '${key}'`);
-    }
+  if (!ValidConfigKeys.includes(key)) {
+    throw new Error(`Unknown configuration key: '${key}'`);
+  }
 }
 
 function validateConfigValue(key, value) {
-    if (!value) {
-        throw new Error(`Invalid configuration, value is not set for '${key}'`);
+  if (!value) {
+    throw new Error(`Invalid configuration, value is not set for '${key}'`);
+  }
+  for (let i = 0; i < value.length; i++) {
+    const unicode = value.codePointAt(i);
+    if (unicode < 0x20 || (unicode > 0x7e && unicode < 0xa0)) {
+      throw new Error(
+        `Invalid configuration, control characters are not allowed: '${value}'`,
+      );
     }
-    for (let i = 0; i < value.length; i++) {
-        const unicode = value.codePointAt(i);
-        if (unicode < 0x20 || (unicode > 0x7E && unicode < 0xA0)) {
-            throw new Error(`Invalid configuration, control characters are not allowed: '${value}'`);
-        }
-    }
+  }
 }
 
 function parseProtocol(options, configString) {
-    let index = configString.indexOf('::');
-    if (index < 0) {
-        throw new Error('Missing protocol, configuration string format: \'protocol::key1=value1;key2=value2;key3=value3;\'');
-    }
+  let index = configString.indexOf("::");
+  if (index < 0) {
+    throw new Error(
+      "Missing protocol, configuration string format: 'protocol::key1=value1;key2=value2;key3=value3;'",
+    );
+  }
 
-    options.protocol = configString.slice(0, index);
-    switch (options.protocol) {
-        case HTTP:
-        case HTTPS:
-        case TCP:
-        case TCPS:
-            break;
-        default:
-            throw new Error(`Invalid protocol: '${options.protocol}', accepted protocols: 'http', 'https', 'tcp', 'tcps'`);
-    }
-    return index + 2;
+  options.protocol = configString.slice(0, index);
+  switch (options.protocol) {
+    case HTTP:
+    case HTTPS:
+    case TCP:
+    case TCPS:
+      break;
+    default:
+      throw new Error(
+        `Invalid protocol: '${options.protocol}', accepted protocols: 'http', 'https', 'tcp', 'tcps'`,
+      );
+  }
+  return index + 2;
 }
 
 function parseAddress(options) {
-    if (!options.addr) {
-        throw new Error('Invalid configuration, \'addr\' is required');
-    }
+  if (!options.addr) {
+    throw new Error("Invalid configuration, 'addr' is required");
+  }
 
-    const index = options.addr.indexOf(':');
-    if (index < 0) {
-        options.host = options.addr;
-        switch (options.protocol) {
-            case HTTP:
-            case HTTPS:
-                options.port = HTTP_PORT;
-                return;
-            case TCP:
-            case TCPS:
-                options.port = TCP_PORT;
-                return;
-            default:
-                throw new Error(`Invalid protocol: '${options.protocol}', accepted protocols: 'http', 'https', 'tcp', 'tcps'`);
-        }
+  const index = options.addr.indexOf(":");
+  if (index < 0) {
+    options.host = options.addr;
+    switch (options.protocol) {
+      case HTTP:
+      case HTTPS:
+        options.port = HTTP_PORT;
+        return;
+      case TCP:
+      case TCPS:
+        options.port = TCP_PORT;
+        return;
+      default:
+        throw new Error(
+          `Invalid protocol: '${options.protocol}', accepted protocols: 'http', 'https', 'tcp', 'tcps'`,
+        );
     }
+  }
 
-    options.host = options.addr.slice(0, index);
-    if (!options.host) {
-        throw new Error(`Host name is required`);
-    }
+  options.host = options.addr.slice(0, index);
+  if (!options.host) {
+    throw new Error(`Host name is required`);
+  }
 
-    const portStr = options.addr.slice(index + 1);
-    if (!portStr) {
-        throw new Error(`Port is required`);
-    }
-    options.port = Number(portStr);
-    if (isNaN(options.port)) {
-        throw new Error(`Invalid port: '${portStr}'`);
-    }
-    if (!Number.isInteger(options.port) || options.port < 1) {
-        throw new Error(`Invalid port: ${options.port}`);
-    }
+  const portStr = options.addr.slice(index + 1);
+  if (!portStr) {
+    throw new Error(`Port is required`);
+  }
+  options.port = Number(portStr);
+  if (isNaN(options.port)) {
+    throw new Error(`Invalid port: '${portStr}'`);
+  }
+  if (!Number.isInteger(options.port) || options.port < 1) {
+    throw new Error(`Invalid port: ${options.port}`);
+  }
 }
 
 function parseBufferSizes(options) {
-    parseInteger(options, 'init_buf_size', 'initial buffer size', 1);
-    parseInteger(options, 'max_buf_size', 'max buffer size', 1);
+  parseInteger(options, "init_buf_size", "initial buffer size", 1);
+  parseInteger(options, "max_buf_size", "max buffer size", 1);
 }
 
 function parseAutoFlushOptions(options) {
-    parseBoolean(options, 'auto_flush', 'auto flush');
-    parseInteger(options, 'auto_flush_rows', 'auto flush rows', 0);
-    parseInteger(options, 'auto_flush_interval', 'auto flush interval', 0);
+  parseBoolean(options, "auto_flush", "auto flush");
+  parseInteger(options, "auto_flush_rows", "auto flush rows", 0);
+  parseInteger(options, "auto_flush_interval", "auto flush interval", 0);
 }
 
 function parseTlsOptions(options) {
-    parseBoolean(options, 'tls_verify', 'TLS verify', UNSAFE_OFF);
+  parseBoolean(options, "tls_verify", "TLS verify", UNSAFE_OFF);
 
-    if (options.tls_roots || options.tls_roots_password) {
-        throw new Error('\'tls_roots\' and \'tls_roots_password\' options are not supported, please, ' +
-            'use the \'tls_ca\' option or the NODE_EXTRA_CA_CERTS environment variable instead');
-    }
+  if (options.tls_roots || options.tls_roots_password) {
+    throw new Error(
+      "'tls_roots' and 'tls_roots_password' options are not supported, please, " +
+        "use the 'tls_ca' option or the NODE_EXTRA_CA_CERTS environment variable instead",
+    );
+  }
 }
 
 function parseRequestTimeoutOptions(options) {
-    parseInteger(options, 'request_min_throughput', 'request min throughput', 1);
-    parseInteger(options, 'request_timeout', 'request timeout', 1);
-    parseInteger(options, 'retry_timeout', 'retry timeout', 0);
+  parseInteger(options, "request_min_throughput", "request min throughput", 1);
+  parseInteger(options, "request_timeout", "request timeout", 1);
+  parseInteger(options, "retry_timeout", "retry timeout", 0);
 }
 
 function parseMaxNameLength(options) {
-    parseInteger(options, 'max_name_len', 'max name length', 1);
+  parseInteger(options, "max_name_len", "max name length", 1);
 }
 
 function parseCopyBuffer(options) {
-    parseBoolean(options, 'copy_buffer', 'copy buffer');
+  parseBoolean(options, "copy_buffer", "copy buffer");
 }
 
 function parseBoolean(options, property, description, offValue = OFF) {
-    if (options[property]) {
-        const property_str = options[property];
-        switch (property_str) {
-            case ON:
-                options[property] = true;
-                break;
-            case offValue:
-                options[property] = false;
-                break;
-            default:
-                throw new Error(`Invalid ${description} option: '${property_str}'`);
-        }
+  if (options[property]) {
+    const property_str = options[property];
+    switch (property_str) {
+      case ON:
+        options[property] = true;
+        break;
+      case offValue:
+        options[property] = false;
+        break;
+      default:
+        throw new Error(`Invalid ${description} option: '${property_str}'`);
     }
+  }
 }
 
 function parseInteger(options, property, description, lowerBound) {
-    if (options[property]) {
-        const property_str = options[property];
-        options[property] = Number(property_str);
-        if (isNaN(options[property])) {
-            throw new Error(`Invalid ${description} option, not a number: '${property_str}'`);
-        }
-        if (!Number.isInteger(options[property]) || options[property] < lowerBound) {
-            throw new Error(`Invalid ${description} option: ${options[property]}`);
-        }
+  if (options[property]) {
+    const property_str = options[property];
+    options[property] = Number(property_str);
+    if (isNaN(options[property])) {
+      throw new Error(
+        `Invalid ${description} option, not a number: '${property_str}'`,
+      );
     }
+    if (
+      !Number.isInteger(options[property]) ||
+      options[property] < lowerBound
+    ) {
+      throw new Error(`Invalid ${description} option: ${options[property]}`);
+    }
+  }
 }
 
-export {
-    SenderOptions,
-    HTTP,
-    HTTPS,
-    TCP,
-    TCPS
-}
+export { SenderOptions, HTTP, HTTPS, TCP, TCPS };
