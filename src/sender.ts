@@ -9,6 +9,7 @@ import crypto from "node:crypto";
 
 import { validateTableName, validateColumnName } from "./validation";
 import { SenderOptions, HTTP, HTTPS, TCP, TCPS } from "./options";
+import { HeaderNames, HeaderRecord } from "undici/types/header";
 
 const HTTP_NO_CONTENT = 204; // success
 
@@ -145,6 +146,7 @@ class Sender {
 
   /** @private */ log;
   /** @private */ agent;
+  /** @private */ jwk;
 
   /**
    * Creates an instance of Sender.
@@ -240,12 +242,12 @@ class Sender {
     this.toBuffer = noCopy ? this.toBufferView : this.toBufferNew;
     this.doResolve = noCopy
       ? (resolve) => {
-          compact(this);
-          resolve(true);
-        }
+        compact(this);
+        resolve(true);
+      }
       : (resolve) => {
-          resolve(true);
-        };
+        resolve(true);
+      };
     this.maxBufferSize = isInteger(options.max_buf_size, 1)
       ? options.max_buf_size
       : DEFAULT_MAX_BUFFER_SIZE;
@@ -365,16 +367,16 @@ class Sender {
         throw new Error("Sender connected already");
       }
 
-      let authenticated = false;
+      let authenticated: boolean = false;
       let data;
 
       this.socket = !this.secure
         ? net.connect(connectOptions)
         : tls.connect(connectOptions, () => {
-            if (authenticated) {
-              resolve(true);
-            }
-          });
+          if (authenticated) {
+            resolve(true);
+          }
+        });
       this.socket.setKeepAlive(true);
 
       this.socket
@@ -704,7 +706,7 @@ function isInteger(value, lowerBound) {
   );
 }
 
-async function authenticate(sender, challenge) {
+async function authenticate(sender, challenge): Promise<boolean> {
   // Check for trailing \n which ends the challenge
   if (challenge.slice(-1).readInt8() === 10) {
     const keyObject = crypto.createPrivateKey({
@@ -754,7 +756,7 @@ function createRequestOptions(sender, data) {
 
 async function sendHttp(sender, options, data, retryTimeout) {
   const retryBegin = Date.now();
-  const headers = new Headers({});
+  const headers = new Map<HeaderNames, string>();
 
   if (sender.secure) {
     sender.agent = new Agent({
@@ -793,23 +795,7 @@ async function sendHttp(sender, options, data, retryTimeout) {
         return callback(err);
       }
 
-      console.log(err);
-      const statusCode = context?.response?.statusCode || -1;
-
-      // Retry on 5xx status codes
-      if (this.statusCodes.includes(statusCode) || statusCode === -1) {
-        console.log("retrying on status code", statusCode);
-        return callback(null);
-      }
-
-      // Retry on specified error codes
-      if (err.code && this.errorCodes.includes(err.code)) {
-        console.log("retrying on error code", err.code);
-        return callback(null);
-      }
-
-      // Do not retry for other cases
-      return callback(err);
+      return callback(null);
     },
   });
 
@@ -819,7 +805,7 @@ async function sendHttp(sender, options, data, retryTimeout) {
     headers.set(
       "Authorization",
       "Basic " +
-        Buffer.from(sender.username + ":" + sender.password).toString("base64"),
+      Buffer.from(sender.username + ":" + sender.password).toString("base64"),
     );
   }
 
@@ -831,7 +817,7 @@ async function sendHttp(sender, options, data, retryTimeout) {
     // Make the HTTP request using Undici
     const { statusCode, body } = await request(requestURL, {
       method: options.method,
-      headers: headers || {},
+      headers: Object.fromEntries(headers.entries()),
       body: data,
       dispatcher: dispatcher,
       headersTimeout: sender.requestTimeout,
@@ -856,7 +842,6 @@ async function sendHttp(sender, options, data, retryTimeout) {
       const error = new Error(
         `HTTP request failed, statusCode=${statusCode}, error=${responseBody.toString()}`,
       );
-      error.statusCode = statusCode;
       throw error;
     }
   } catch (err) {
@@ -921,7 +906,7 @@ function compact(sender) {
   }
 }
 
-function writeColumn(sender, name, value, writeValue, valueType) {
+function writeColumn(sender, name, value, writeValue, valueType?: string | null) {
   if (typeof name !== "string") {
     throw new Error(`Column name must be a string, received ${typeof name}`);
   }
@@ -1034,7 +1019,7 @@ function constructAuth(options) {
   if (!options.username || !options.token) {
     throw new Error(
       "TCP transport requires a username and a private key for authentication, " +
-        "please, specify the 'username' and 'token' config options",
+      "please, specify the 'username' and 'token' config options",
     );
   }
 
@@ -1049,25 +1034,25 @@ function constructJwk(options) {
     if (!options.auth.keyId) {
       throw new Error(
         "Missing username, please, specify the 'keyId' property of the 'auth' config option. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
     if (typeof options.auth.keyId !== "string") {
       throw new Error(
         "Please, specify the 'keyId' property of the 'auth' config option as a string. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
     if (!options.auth.token) {
       throw new Error(
         "Missing private key, please, specify the 'token' property of the 'auth' config option. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
     if (typeof options.auth.token !== "string") {
       throw new Error(
         "Please, specify the 'token' property of the 'auth' config option as a string. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
 

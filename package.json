@@ -1,10 +1,7 @@
 {
-  "name": "@questdb/nodejs-client",
+  "name": "@sherpaswealth/questdb-client",
   "version": "4.0.0",
   "description": "QuestDB Node.js Client",
-  "main": "index.js",
-  "types": "types/index.d.ts",
-  "type": "module",
   "scripts": {
     "test": "vitest",
     "build": "bunchee",
@@ -12,6 +9,19 @@
     "docs": "jsdoc src/sender.js src/options.js README.md -d docs",
     "-----DEPRECATED": "-----",
     "types": "npx -p typescript tsc --skipLibCheck --declaration --allowJs --emitDeclarationOnly --outDir types"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "import": {
+      "types": "./dist/es/index.d.mts",
+      "default": "./dist/es/index.mjs"
+    },
+    "require": {
+      "types": "./dist/cjs/index.d.ts",
+      "default": "./dist/cjs/index.js"
+    }
   },
   "repository": {
     "type": "git",

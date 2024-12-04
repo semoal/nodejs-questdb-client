@@ -4,3 +4,4 @@ coverage
 *.iml
 .DS_Store
 certs
+dist
