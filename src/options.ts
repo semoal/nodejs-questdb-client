@@ -149,6 +149,9 @@ class SenderOptions {
   log;
   agent;
 
+  auth;
+  jwk;
+
   /**
    * Creates a Sender options object by parsing the provided configuration string.
    *
@@ -382,7 +385,7 @@ function parseTlsOptions(options) {
   if (options.tls_roots || options.tls_roots_password) {
     throw new Error(
       "'tls_roots' and 'tls_roots_password' options are not supported, please, " +
-        "use the 'tls_ca' option or the NODE_EXTRA_CA_CERTS environment variable instead",
+      "use the 'tls_ca' option or the NODE_EXTRA_CA_CERTS environment variable instead",
     );
   }
 }

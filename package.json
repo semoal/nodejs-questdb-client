@@ -1,5 +1,5 @@
 {
-  "name": "@sherpaswealth/questdb-client",
+  "name": "@sergiomoreno/questdb",
   "version": "4.0.0",
   "description": "QuestDB Node.js Client",
   "scripts": {

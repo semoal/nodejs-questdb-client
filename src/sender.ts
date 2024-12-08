@@ -4,7 +4,7 @@ import { Buffer } from "node:buffer";
 import { log } from "./logging";
 import net from "node:net";
 import tls from "node:tls";
-import { Agent, request, RetryAgent } from "undici";
+import { Agent, RetryAgent } from "undici";
 import crypto from "node:crypto";
 
 import { validateTableName, validateColumnName } from "./validation";
@@ -27,7 +27,7 @@ const DEFAULT_BUFFER_SIZE = 65536; //  64 KB
 const DEFAULT_MAX_BUFFER_SIZE = 104857600; // 100 MB
 
 /** @type {Agent.Options} */
-const DEFAULT_HTTP_OPTIONS = {
+const DEFAULT_HTTP_OPTIONS: Agent.Options = {
   connect: {
     keepAlive: true,
   },
@@ -154,7 +154,7 @@ class Sender {
    * @param {SenderOptions} options - Sender configuration object. <br>
    * See SenderOptions documentation for detailed description of configuration options. <br>
    */
-  constructor(options) {
+  constructor(options: SenderOptions) {
     if (!options || !options.protocol) {
       throw new Error("The 'protocol' option is mandatory");
     }
@@ -271,7 +271,7 @@ class Sender {
    *
    * @return {Sender} A Sender object initialized from the provided configuration string.
    */
-  static fromConfig(configurationString, extraOptions = undefined) {
+  static fromConfig(configurationString: string, extraOptions: object = undefined): Sender {
     return new Sender(
       SenderOptions.fromConfig(configurationString, extraOptions),
     );
@@ -288,7 +288,7 @@ class Sender {
    *
    * @return {Sender} A Sender object initialized from the <b>QDB_CLIENT_CONF</b> environment variable.
    */
-  static fromEnv(extraOptions = undefined) {
+  static fromEnv(extraOptions: object = undefined): Sender {
     return new Sender(
       SenderOptions.fromConfig(process.env.QDB_CLIENT_CONF, extraOptions),
     );
@@ -301,7 +301,7 @@ class Sender {
    *
    * @param {number} bufferSize - New size of the buffer used by the sender, provided in bytes.
    */
-  resize(bufferSize) {
+  resize(bufferSize: number) {
     if (bufferSize > this.maxBufferSize) {
       throw new Error(
         `Max buffer size is ${this.maxBufferSize} bytes, requested buffer size: ${bufferSize}`,
@@ -325,7 +325,7 @@ class Sender {
    *
    * @return {Sender} Returns with a reference to this sender.
    */
-  reset() {
+  reset(): Sender {
     this.position = 0;
     this.lastFlushTime = Date.now();
     this.pendingRowCount = 0;
@@ -340,7 +340,7 @@ class Sender {
    *
    * @return {Promise<boolean>} Resolves to true if the client is connected.
    */
-  connect(connectOptions = undefined) {
+  connect(connectOptions: net.NetConnectOpts | tls.ConnectionOptions = undefined): Promise<boolean> {
     if (this.http) {
       throw new Error(
         "'connect()' should be called only if the sender connects via TCP",
@@ -354,10 +354,10 @@ class Sender {
         ca: this.tlsCA,
       };
     }
-    if (!connectOptions.host) {
+    if (!(connectOptions as tls.ConnectionOptions).host) {
       throw new Error("Hostname is not set");
     }
-    if (!connectOptions.port) {
+    if (!(connectOptions as tls.ConnectionOptions).port) {
       throw new Error("Port is not set");
     }
 
@@ -371,7 +371,7 @@ class Sender {
       let data;
 
       this.socket = !this.secure
-        ? net.connect(connectOptions)
+        ? net.connect(connectOptions as net.NetConnectOpts)
         : tls.connect(connectOptions, () => {
           if (authenticated) {
             resolve(true);
@@ -394,12 +394,12 @@ class Sender {
         .on("ready", async () => {
           this.log(
             "info",
-            `Successfully connected to ${connectOptions.host}:${connectOptions.port}`,
+            `Successfully connected to ${(connectOptions as tls.ConnectionOptions).host}:${(connectOptions as tls.ConnectionOptions).port}`,
           );
           if (self.jwk) {
             this.log(
               "info",
-              `Authenticating with ${connectOptions.host}:${connectOptions.port}`,
+              `Authenticating with ${(connectOptions as tls.ConnectionOptions).host}:${(connectOptions as tls.ConnectionOptions).port}`,
             );
             await self.socket.write(`${self.jwk.kid}\n`, (err) => {
               if (err) {
@@ -426,7 +426,7 @@ class Sender {
    * @ignore
    * @return {Agent} Returns the default http agent.
    */
-  getDefaultHttpAgent() {
+  getDefaultHttpAgent(): Agent {
     if (!Sender.DEFAULT_HTTP_AGENT) {
       Sender.DEFAULT_HTTP_AGENT = new Agent(DEFAULT_HTTP_OPTIONS);
     }
@@ -453,7 +453,7 @@ class Sender {
    *
    * @return {Promise<boolean>} Resolves to true when there was data in the buffer to send.
    */
-  async flush() {
+  async flush(): Promise<unknown> {
     const data = this.toBuffer(this.endOfLastRow);
     if (!data) {
       return false;
@@ -476,7 +476,7 @@ class Sender {
    * @return {Buffer} Returns a cropped buffer ready to send to the server or null if there is nothing to send.
    * The returned buffer is backed by the sender's buffer.
    */
-  toBufferView(pos = this.position) {
+  toBufferView(pos = this.position): Buffer {
     return pos > 0 ? this.buffer.subarray(0, pos) : null;
   }
 
@@ -485,7 +485,7 @@ class Sender {
    * @return {Buffer|null} Returns a cropped buffer ready to send to the server or null if there is nothing to send.
    * The returned buffer is a copy of the sender's buffer.
    */
-  toBufferNew(pos = this.position) {
+  toBufferNew(pos = this.position): Buffer | null {
     if (pos > 0) {
       const data = Buffer.allocUnsafe(pos);
       this.buffer.copy(data, 0, 0, pos);
@@ -501,7 +501,7 @@ class Sender {
    * @param {string} table - Table name.
    * @return {Sender} Returns with a reference to this sender.
    */
-  table(table) {
+  table(table: string): Sender {
     if (typeof table !== "string") {
       throw new Error(`Table name must be a string, received ${typeof table}`);
     }
@@ -522,7 +522,7 @@ class Sender {
    * @param {any} value - Symbol value, toString() will be called to extract the actual symbol value from the parameter.
    * @return {Sender} Returns with a reference to this sender.
    */
-  symbol(name, value) {
+  symbol(name: string, value: any): Sender {
     if (typeof name !== "string") {
       throw new Error(`Symbol name must be a string, received ${typeof name}`);
     }
@@ -549,7 +549,7 @@ class Sender {
    * @param {string} value - Column value, accepts only string values.
    * @return {Sender} Returns with a reference to this sender.
    */
-  stringColumn(name, value) {
+  stringColumn(name: string, value: string): Sender {
     writeColumn(
       this,
       name,
@@ -572,7 +572,7 @@ class Sender {
    * @param {boolean} value - Column value, accepts only boolean values.
    * @return {Sender} Returns with a reference to this sender.
    */
-  booleanColumn(name, value) {
+  booleanColumn(name: string, value: boolean): Sender {
     writeColumn(
       this,
       name,
@@ -593,7 +593,7 @@ class Sender {
    * @param {number} value - Column value, accepts only number values.
    * @return {Sender} Returns with a reference to this sender.
    */
-  floatColumn(name, value) {
+  floatColumn(name: string, value: number): Sender {
     writeColumn(
       this,
       name,
@@ -615,7 +615,7 @@ class Sender {
    * @param {number} value - Column value, accepts only number values.
    * @return {Sender} Returns with a reference to this sender.
    */
-  intColumn(name, value) {
+  intColumn(name: string, value: number): Sender {
     if (!Number.isInteger(value)) {
       throw new Error(`Value must be an integer, received ${value}`);
     }
@@ -636,7 +636,7 @@ class Sender {
    * @param {string} [unit=us] - Timestamp unit. Supported values: 'ns' - nanoseconds, 'us' - microseconds, 'ms' - milliseconds. Defaults to 'us'.
    * @return {Sender} Returns with a reference to this sender.
    */
-  timestampColumn(name, value, unit = "us") {
+  timestampColumn(name: string, value: number | bigint, unit: string = "us"): Sender {
     if (typeof value !== "bigint" && !Number.isInteger(value)) {
       throw new Error(`Value must be an integer or BigInt, received ${value}`);
     }
@@ -656,7 +656,7 @@ class Sender {
    * @param {number | bigint} timestamp - Designated epoch timestamp, accepts numbers or BigInts.
    * @param {string} [unit=us] - Timestamp unit. Supported values: 'ns' - nanoseconds, 'us' - microseconds, 'ms' - milliseconds. Defaults to 'us'.
    */
-  async at(timestamp, unit = "us") {
+  async at(timestamp: number | bigint, unit: string = "us") {
     if (!this.hasSymbols && !this.hasColumns) {
       throw new Error(
         "The row must have a symbol or column set before it is closed",
@@ -756,7 +756,7 @@ function createRequestOptions(sender, data) {
 
 async function sendHttp(sender, options, data, retryTimeout) {
   const retryBegin = Date.now();
-  const headers = new Map<HeaderNames, string>();
+  const headers: Record<string, string> = {};
 
   if (sender.secure) {
     sender.agent = new Agent({
@@ -800,26 +800,19 @@ async function sendHttp(sender, options, data, retryTimeout) {
   });
 
   if (sender.token) {
-    headers.set("Authorization", "Bearer " + sender.token);
+    headers["Authorization"] = "Bearer " + sender.token;
   } else if (sender.username && sender.password) {
-    headers.set(
-      "Authorization",
-      "Basic " +
-      Buffer.from(sender.username + ":" + sender.password).toString("base64"),
-    );
+    headers["Authorization"] = "Basic " +
+      Buffer.from(sender.username + ":" + sender.password).toString("base64");
   }
 
-  const requestURL = new URL(
-    `${options.protocol}://${options.hostname}:${options.port}/write?precision=n`,
-  ).toString();
-
   try {
-    // Make the HTTP request using Undici
-    const { statusCode, body } = await request(requestURL, {
+    const { statusCode, body } = await dispatcher.request({
+      origin: `${options.protocol}://${options.hostname}:${options.port}`,
+      path: `/write?precision=n`,
       method: options.method,
-      headers: Object.fromEntries(headers.entries()),
+      headers,
       body: data,
-      dispatcher: dispatcher,
       headersTimeout: sender.requestTimeout,
     });
 
