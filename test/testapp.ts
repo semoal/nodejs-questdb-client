@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 
-import { Proxy } from "./proxy";
-import { Sender } from "../index";
+import { Proxy } from "./_utils_/proxy";
+import { Sender } from "../src/index";
+import { SenderOptions } from "../src/options";
 
 const PROXY_PORT = 9099;
 const PORT = 9009;
@@ -14,12 +15,12 @@ const AUTH = {
   d: PRIVATE_KEY,
 };
 
-const senderOptions = {
+const senderOptions: SenderOptions = {
   protocol: "tcps",
   host: HOST,
   port: PROXY_PORT,
-  auth: AUTH,
-  ca: readFileSync("certs/ca/ca.crt"), // necessary only if the server uses self-signed certificate
+  addr: "localhost",
+  tls_ca: readFileSync("certs/ca/ca.crt"), // necessary only if the server uses self-signed certificate
 };
 
 const proxyTLS = {

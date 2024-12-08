@@ -15,7 +15,7 @@ const DEFAULT_CRITICALITY = LOG_LEVELS.info.criticality;
  * @param {'error'|'warn'|'info'|'debug'} level - The log level of the message.
  * @param {string} message - The log message.
  */
-function log(level, message) {
+function log(level: 'error' | 'warn' | 'info' | 'debug', message: string) {
   const logLevel = LOG_LEVELS[level];
   if (!logLevel) {
     throw new Error(`Invalid log level: '${level}'`);

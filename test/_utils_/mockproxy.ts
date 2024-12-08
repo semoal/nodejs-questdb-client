@@ -3,6 +3,14 @@ import { write, listen, shutdown } from "./proxyfunctions";
 const CHALLENGE_LENGTH = 512;
 
 class MockProxy {
+  mockConfig: {
+    auth?: boolean;
+    assertions?: boolean;
+  };
+  dataSentToRemote: string[];
+  hasSentChallenge: boolean;
+  client: any;
+
   constructor(mockConfig) {
     if (!mockConfig) {
       throw new Error("Missing mock config");
@@ -11,7 +19,7 @@ class MockProxy {
     this.dataSentToRemote = [];
   }
 
-  async start(listenPort, tlsOptions = undefined) {
+  async start(listenPort: number, tlsOptions?: Record<string, unknown>) {
     await listen(
       this,
       listenPort,

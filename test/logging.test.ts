@@ -9,14 +9,13 @@ import {
 } from "vitest";
 
 describe("Default logging suite", function () {
-  let error, warn, info, debug;
-  let log;
+  const error = vi.spyOn(console, "error").mockImplementation(() => { });
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => { });
+  const info = vi.spyOn(console, "info").mockImplementation(() => { });
+  const debug = vi.spyOn(console, "debug").mockImplementation(() => { });
+  let log: (level: "error" | "warn" | "info" | "debug", message: string) => void;
 
   beforeAll(async () => {
-    error = vi.spyOn(console, "error").mockImplementation(() => {});
-    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    info = vi.spyOn(console, "info").mockImplementation(() => {});
-    debug = vi.spyOn(console, "debug").mockImplementation(() => {});
     log = (await import("../src/logging")).log;
   });
 
@@ -25,6 +24,7 @@ describe("Default logging suite", function () {
     warn.mockReset();
     info.mockReset();
     debug.mockReset();
+
   });
 
   afterEach(() => {
@@ -74,6 +74,7 @@ describe("Default logging suite", function () {
   });
 
   it("throws exception if log level is not supported", function () {
+    // @ts-expect-error - Testing invalid log level
     expect(() => log("trace", "TRACE TRACE TRACE")).toThrow(
       "Invalid log level: 'trace'",
     );

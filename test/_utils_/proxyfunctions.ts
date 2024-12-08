@@ -4,7 +4,7 @@ import tls from "node:tls";
 const LOCALHOST = "localhost";
 
 async function write(socket, data) {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     socket.write(data, "utf8", (err) => {
       err ? reject(err) : resolve();
     });
@@ -12,7 +12,7 @@ async function write(socket, data) {
 }
 
 async function listen(proxy, listenPort, dataHandler, tlsOptions) {
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     const clientConnHandler = (client) => {
       console.info("client connected");
       if (proxy.client) {
@@ -39,9 +39,9 @@ async function listen(proxy, listenPort, dataHandler, tlsOptions) {
   });
 }
 
-async function shutdown(proxy, onServerClose = async () => {}) {
+async function shutdown(proxy, onServerClose = async () => { }) {
   console.info("closing proxy");
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     proxy.server.close(async () => {
       await onServerClose();
       resolve();
@@ -51,15 +51,14 @@ async function shutdown(proxy, onServerClose = async () => {}) {
 
 async function connect(proxy, remotePort, remoteHost) {
   console.info(`opening remote connection to ${remoteHost}:${remotePort}`);
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     proxy.remote.connect(remotePort, remoteHost, () => resolve());
   });
 }
 
 async function close(proxy) {
   console.info("closing remote connection");
-  return new Promise((resolve) => {
-    proxy.remote.destroy();
+  return new Promise<void>((resolve) => {
     resolve();
   });
 }

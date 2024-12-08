@@ -1,3 +1,4 @@
+import { PathOrFileDescriptor } from "fs";
 import { Agent } from "undici";
 
 const HTTP_PORT = 9000;
@@ -112,45 +113,50 @@ const UNSAFE_OFF = "unsafe_off";
  * </ul>
  */
 class SenderOptions {
-  protocol;
-  addr;
-  host; // derived from addr
-  port; // derived from addr
+  protocol: string;
+  addr?: string;
+  host?: string; // derived from addr
+  port?: number; // derived from addr
 
   // replaces `auth` and `jwk` options
-  username;
-  password;
-  token;
-  token_x; // allowed, but ignored
-  token_y; // allowed, but ignored
+  username?: string;
+  password?: string;
+  token?: string;
+  token_x?: string; // allowed, but ignored
+  token_y?: string; // allowed, but ignored
 
-  auto_flush;
-  auto_flush_rows;
-  auto_flush_interval;
+  auto_flush?: boolean;
+  auto_flush_rows?: number;
+  auto_flush_interval?: number;
 
   // replaces `copyBuffer` option
-  copy_buffer;
+  copy_buffer?: string | boolean | null;
 
-  request_min_throughput;
-  request_timeout;
-  retry_timeout;
+  request_min_throughput?: number;
+  request_timeout?: number;
+  retry_timeout?: number;
 
   // replaces `bufferSize` option
-  init_buf_size;
-  max_buf_size;
+  init_buf_size?: number | null;
+  max_buf_size?: number | null;
 
-  tls_verify;
-  tls_ca;
-  tls_roots; // not supported
-  tls_roots_password; // not supported
+  tls_verify?: boolean;
+  tls_ca?: PathOrFileDescriptor;
+  tls_roots?: never; // not supported
+  tls_roots_password?: never; // not supported
 
-  max_name_len;
+  max_name_len?: number;
 
-  log;
-  agent;
+  log?: ((level: 'error' | 'warn' | 'info' | 'debug', message: string) => void) | null;
+  agent?: Agent;
 
-  auth;
-  jwk;
+  auth?: {
+    username?: string;
+    keyId?: string;
+    password?: string;
+    token?: string;
+  };
+  jwk?: Record<string, string>;
 
   /**
    * Creates a Sender options object by parsing the provided configuration string.
@@ -162,7 +168,7 @@ class SenderOptions {
    * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
    * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
    */
-  constructor(configurationString, extraOptions = undefined) {
+  constructor(configurationString: string, extraOptions = undefined) {
     parseConfigurationString(this, configurationString);
 
     if (extraOptions) {
@@ -190,7 +196,10 @@ class SenderOptions {
    *
    * @return {SenderOptions} A Sender configuration object initialized from the provided configuration string.
    */
-  static fromConfig(configurationString, extraOptions = undefined) {
+  static fromConfig(configurationString: string, extraOptions: {
+    log?: (level: 'error' | 'warn' | 'info' | 'debug', message: string) => void,
+    agent?: Agent
+  } = undefined) {
     return new SenderOptions(configurationString, extraOptions);
   }
 
@@ -199,7 +208,7 @@ class SenderOptions {
    *
    * @param {object} extraOptions - Optional extra configuration. <br>
    * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
-   * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
+  }in  /**br>
    * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
    * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
    *
@@ -210,7 +219,7 @@ class SenderOptions {
   }
 }
 
-function parseConfigurationString(options, configString) {
+function parseConfigurationString(options: SenderOptions, configString: string) {
   if (!configString) {
     throw new Error("Configuration string is missing or empty");
   }
@@ -226,7 +235,7 @@ function parseConfigurationString(options, configString) {
   parseCopyBuffer(options);
 }
 
-function parseSettings(options, configString, position) {
+function parseSettings(options: SenderOptions, configString: string, position: number) {
   let index = configString.indexOf(";", position);
   while (index > -1) {
     if (
@@ -247,7 +256,7 @@ function parseSettings(options, configString, position) {
   }
 }
 
-function parseSetting(options, configString, position, index) {
+function parseSetting(options: SenderOptions, configString: string, position: number, index: number) {
   const setting = configString.slice(position, index).replaceAll(";;", ";");
   const equalsIndex = setting.indexOf("=");
   if (equalsIndex < 0) {
@@ -283,13 +292,13 @@ const ValidConfigKeys = [
   "tls_roots_password",
 ];
 
-function validateConfigKey(key) {
+function validateConfigKey(key: string) {
   if (!ValidConfigKeys.includes(key)) {
     throw new Error(`Unknown configuration key: '${key}'`);
   }
 }
 
-function validateConfigValue(key, value) {
+function validateConfigValue(key: string, value: string) {
   if (!value) {
     throw new Error(`Invalid configuration, value is not set for '${key}'`);
   }
@@ -303,7 +312,7 @@ function validateConfigValue(key, value) {
   }
 }
 
-function parseProtocol(options, configString) {
+function parseProtocol(options: { protocol: any; }, configString: string | string[]) {
   let index = configString.indexOf("::");
   if (index < 0) {
     throw new Error(
@@ -326,7 +335,7 @@ function parseProtocol(options, configString) {
   return index + 2;
 }
 
-function parseAddress(options) {
+function parseAddress(options: SenderOptions) {
   if (!options.addr) {
     throw new Error("Invalid configuration, 'addr' is required");
   }
@@ -368,18 +377,18 @@ function parseAddress(options) {
   }
 }
 
-function parseBufferSizes(options) {
+function parseBufferSizes(options: SenderOptions) {
   parseInteger(options, "init_buf_size", "initial buffer size", 1);
   parseInteger(options, "max_buf_size", "max buffer size", 1);
 }
 
-function parseAutoFlushOptions(options) {
+function parseAutoFlushOptions(options: SenderOptions) {
   parseBoolean(options, "auto_flush", "auto flush");
   parseInteger(options, "auto_flush_rows", "auto flush rows", 0);
   parseInteger(options, "auto_flush_interval", "auto flush interval", 0);
 }
 
-function parseTlsOptions(options) {
+function parseTlsOptions(options: SenderOptions) {
   parseBoolean(options, "tls_verify", "TLS verify", UNSAFE_OFF);
 
   if (options.tls_roots || options.tls_roots_password) {
@@ -390,21 +399,21 @@ function parseTlsOptions(options) {
   }
 }
 
-function parseRequestTimeoutOptions(options) {
+function parseRequestTimeoutOptions(options: SenderOptions) {
   parseInteger(options, "request_min_throughput", "request min throughput", 1);
   parseInteger(options, "request_timeout", "request timeout", 1);
   parseInteger(options, "retry_timeout", "retry timeout", 0);
 }
 
-function parseMaxNameLength(options) {
+function parseMaxNameLength(options: SenderOptions) {
   parseInteger(options, "max_name_len", "max name length", 1);
 }
 
-function parseCopyBuffer(options) {
+function parseCopyBuffer(options: SenderOptions) {
   parseBoolean(options, "copy_buffer", "copy buffer");
 }
 
-function parseBoolean(options, property, description, offValue = OFF) {
+function parseBoolean(options: SenderOptions, property: string, description: string, offValue = OFF) {
   if (options[property]) {
     const property_str = options[property];
     switch (property_str) {
@@ -420,7 +429,7 @@ function parseBoolean(options, property, description, offValue = OFF) {
   }
 }
 
-function parseInteger(options, property, description, lowerBound) {
+function parseInteger(options: SenderOptions, property: string, description: string, lowerBound: number) {
   if (options[property]) {
     const property_str = options[property];
     options[property] = Number(property_str);

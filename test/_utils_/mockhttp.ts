@@ -15,13 +15,14 @@ class MockHttp {
     this.numOfRequests = 0;
   }
 
-  async start(listenPort, secure = false, options = undefined) {
-    const createServer = secure ? https.createServer : http.createServer;
-    this.server = createServer(options, (req, res) => {
+  async start(listenPort, secure = false, options?: Record<string, unknown>) {
+    const serverCreator = secure ? https.createServer : http.createServer;
+    // @ts-expect-error - Testing different options, so typing is not important
+    this.server = serverCreator(options, (req, res) => {
       const authFailed = checkAuthHeader(this.mockConfig, req);
 
-      const body = [];
-      req.on("data", (chunk) => {
+      const body: any[] = [];
+      req.on("data", (chunk: any) => {
         body.push(chunk);
       });
 
@@ -31,7 +32,7 @@ class MockHttp {
 
         const delay =
           this.mockConfig.responseDelays &&
-          this.mockConfig.responseDelays.length > 0
+            this.mockConfig.responseDelays.length > 0
             ? this.mockConfig.responseDelays.pop()
             : undefined;
         if (delay) {
@@ -41,7 +42,7 @@ class MockHttp {
         const responseCode = authFailed
           ? 401
           : this.mockConfig.responseCodes &&
-              this.mockConfig.responseCodes.length > 0
+            this.mockConfig.responseCodes.length > 0
             ? this.mockConfig.responseCodes.pop()
             : 204;
         res.writeHead(responseCode);

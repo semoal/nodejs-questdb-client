@@ -369,15 +369,18 @@ describe("Configuration string parser suite", function () {
   });
 
   it("throws error if configuration string is missing", function () {
+    // @ts-expect-error - Testing invalid input
     expect(() => SenderOptions.fromConfig()).toThrow(
       "Configuration string is missing",
     );
     expect(() => SenderOptions.fromConfig("")).toThrow(
       "Configuration string is missing",
     );
+    // @ts-expect-error - Testing invalid input
     expect(() => SenderOptions.fromConfig(null)).toThrow(
       "Configuration string is missing",
     );
+    // @ts-expect-error - Testing invalid input
     expect(() => SenderOptions.fromConfig(undefined)).toThrow(
       "Configuration string is missing",
     );
@@ -696,9 +699,11 @@ describe("Configuration string parser suite", function () {
     expect(options.log).toBe(console.log);
 
     expect(() =>
+      // @ts-expect-error - Testing invalid input
       SenderOptions.fromConfig("http::addr=host:9000", { log: 1234 }),
     ).toThrow("Invalid logging function");
     expect(() =>
+      // @ts-expect-error - Testing invalid input
       SenderOptions.fromConfig("http::addr=host:9000", { log: "hoppa" }),
     ).toThrow("Invalid logging function");
   });
@@ -717,13 +722,16 @@ describe("Configuration string parser suite", function () {
 
     expect(() =>
       SenderOptions.fromConfig("http::addr=host:9000", {
+        // @ts-expect-error - Testing invalid input
         agent: { keepAlive: true },
       }),
     ).toThrow("Invalid http/https agent");
     expect(() =>
+      // @ts-expect-error - Testing invalid input
       SenderOptions.fromConfig("http::addr=host:9000", { agent: 4567 }),
     ).toThrow("Invalid http/https agent");
     expect(() =>
+      // @ts-expect-error - Testing invalid input
       SenderOptions.fromConfig("http::addr=host:9000", { agent: "hopp" }),
     ).toThrow("Invalid http/https agent");
   });

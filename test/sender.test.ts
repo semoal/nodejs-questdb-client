@@ -1,12 +1,13 @@
 import { Sender } from "../src/index";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { DEFAULT_BUFFER_SIZE, DEFAULT_MAX_BUFFER_SIZE } from "../src/sender";
-import { MockProxy } from "./mockproxy";
 import { readFileSync } from "fs";
+import { MockProxy } from "./_utils_/mockproxy";
+import { MockHttp } from "./_utils_/mockhttp";
 import { GenericContainer } from "testcontainers";
 import http from "http";
-import { MockHttp } from "./mockhttp";
 import { Agent } from "undici";
+import { SenderOptions } from "../src/options";
 
 const HTTP_OK = 200;
 
@@ -25,7 +26,7 @@ const proxyOptions = {
 
 const USER_NAME = "testapp";
 const PRIVATE_KEY = "9b9x5WhJywDEuo1KGQWSPNxtX-6X6R2BRCKhYMMY6n8";
-const AUTH = {
+const AUTH: SenderOptions['auth'] = {
   keyId: USER_NAME,
   token: PRIVATE_KEY,
 };
@@ -47,7 +48,6 @@ describe("Sender configuration options suite", function () {
   it("throws exception if the username or the token is missing when TCP transport is used", async function () {
     try {
       await Sender.fromConfig("tcp::addr=hostname;username=bobo;").close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "TCP transport requires a username and a private key for authentication, please, specify the 'username' and 'token' config options",
@@ -56,7 +56,6 @@ describe("Sender configuration options suite", function () {
 
     try {
       await Sender.fromConfig("tcp::addr=hostname;token=bobo_token;").close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "TCP transport requires a username and a private key for authentication, please, specify the 'username' and 'token' config options",
@@ -69,7 +68,6 @@ describe("Sender configuration options suite", function () {
       await Sender.fromConfig(
         "tcps::addr=hostname;username=bobo;tls_roots=bla;",
       ).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "'tls_roots' and 'tls_roots_password' options are not supported, please, use the 'tls_ca' option or the NODE_EXTRA_CA_CERTS environment variable instead",
@@ -80,7 +78,6 @@ describe("Sender configuration options suite", function () {
       await Sender.fromConfig(
         "tcps::addr=hostname;token=bobo_token;tls_roots_password=bla;",
       ).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "'tls_roots' and 'tls_roots_password' options are not supported, please, use the 'tls_ca' option or the NODE_EXTRA_CA_CERTS environment variable instead",
@@ -93,7 +90,6 @@ describe("Sender configuration options suite", function () {
     try {
       sender = Sender.fromConfig("http::addr=hostname");
       await sender.connect();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "'connect()' should be called only if the sender connects via TCP",
@@ -106,8 +102,8 @@ describe("Sender configuration options suite", function () {
 describe("Sender options test suite", function () {
   it("fails if no options defined", async function () {
     try {
+      // @ts-expect-error - Testing invalid options
       await new Sender().close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("The 'protocol' option is mandatory");
     }
@@ -115,8 +111,8 @@ describe("Sender options test suite", function () {
 
   it("fails if options are null", async function () {
     try {
+      // @ts-expect-error - Testing invalid options
       await new Sender(null).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("The 'protocol' option is mandatory");
     }
@@ -124,8 +120,8 @@ describe("Sender options test suite", function () {
 
   it("fails if options are undefined", async function () {
     try {
+      // @ts-expect-error - Testing invalid options
       await new Sender(undefined).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("The 'protocol' option is mandatory");
     }
@@ -133,8 +129,8 @@ describe("Sender options test suite", function () {
 
   it("fails if options are empty", async function () {
     try {
+      // @ts-expect-error - Testing invalid options
       await new Sender({}).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("The 'protocol' option is mandatory");
     }
@@ -142,8 +138,8 @@ describe("Sender options test suite", function () {
 
   it("fails if protocol option is missing", async function () {
     try {
+      // @ts-expect-error - Testing invalid options
       await new Sender({ host: "host" }).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("The 'protocol' option is mandatory");
     }
@@ -152,7 +148,6 @@ describe("Sender options test suite", function () {
   it("fails if protocol option is invalid", async function () {
     try {
       await new Sender({ protocol: "abcd" }).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("Invalid protocol: 'abcd'");
     }
@@ -258,6 +253,7 @@ describe("Sender options test suite", function () {
     const sender = new Sender({
       protocol: "http",
       host: "host",
+      // @ts-expect-error - Testing invalid options
       init_buf_size: "1024",
     });
     expect(sender.bufferSize).toBe(DEFAULT_BUFFER_SIZE);
@@ -288,7 +284,6 @@ describe("Sender options test suite", function () {
         max_buf_size: 8192,
         init_buf_size: 16384,
       }).close();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "Max buffer size is 8192 bytes, requested buffer size: 16384",
@@ -320,6 +315,7 @@ describe("Sender options test suite", function () {
     const sender = new Sender({
       protocol: "http",
       host: "host",
+      // @ts-expect-error - Testing invalid vlaue
       max_buf_size: "1024",
     });
     expect(sender.maxBufferSize).toBe(DEFAULT_MAX_BUFFER_SIZE);
@@ -333,7 +329,7 @@ describe("Sender options test suite", function () {
   });
 
   it("uses the required log function if it is set", async function () {
-    const testFunc = () => {};
+    const testFunc = () => { };
     const sender = new Sender({
       protocol: "http",
       host: "host",
@@ -360,6 +356,7 @@ describe("Sender options test suite", function () {
   });
 
   it("uses default logger if log is not a function", async function () {
+    // @ts-expect-error - Testing invalid options
     const sender = new Sender({ protocol: "http", host: "host", log: "" });
     expect(JSON.stringify(sender.log)).toEqual(JSON.stringify(sender.log));
     await sender.close();
@@ -380,7 +377,7 @@ describe("Sender auth config checks suite", function () {
     } catch (err) {
       expect(err.message).toBe(
         "Missing username, please, specify the 'keyId' property of the 'auth' config option. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
   });
@@ -399,7 +396,7 @@ describe("Sender auth config checks suite", function () {
     } catch (err) {
       expect(err.message).toBe(
         "Missing username, please, specify the 'keyId' property of the 'auth' config option. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
   });
@@ -410,6 +407,7 @@ describe("Sender auth config checks suite", function () {
         protocol: "tcp",
         host: "host",
         auth: {
+          // @ts-expect-error - Testing invalid options
           keyId: 23,
           token: "privateKey",
         },
@@ -418,7 +416,7 @@ describe("Sender auth config checks suite", function () {
     } catch (err) {
       expect(err.message).toBe(
         "Please, specify the 'keyId' property of the 'auth' config option as a string. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
   });
@@ -436,7 +434,7 @@ describe("Sender auth config checks suite", function () {
     } catch (err) {
       expect(err.message).toBe(
         "Missing private key, please, specify the 'token' property of the 'auth' config option. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
   });
@@ -455,7 +453,7 @@ describe("Sender auth config checks suite", function () {
     } catch (err) {
       expect(err.message).toBe(
         "Missing private key, please, specify the 'token' property of the 'auth' config option. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
   });
@@ -467,6 +465,7 @@ describe("Sender auth config checks suite", function () {
         host: "host",
         auth: {
           keyId: "username",
+          // @ts-expect-error - Testing invalid options
           token: true,
         },
       }).close();
@@ -474,7 +473,7 @@ describe("Sender auth config checks suite", function () {
     } catch (err) {
       expect(err.message).toBe(
         "Please, specify the 'token' property of the 'auth' config option as a string. " +
-          "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
+        "For example: new Sender({protocol: 'tcp', host: 'host', auth: {keyId: 'username', token: 'private key'}})",
       );
     }
   });
@@ -702,8 +701,8 @@ describe("Sender HTTP suite", function () {
     const agent = new Agent({ connect: { keepAlive: false } });
 
     const num = 300;
-    const senders = [];
-    const promises = [];
+    const senders: Sender[] = [];
+    const promises: Promise<void>[] = [];
     for (let i = 0; i < num; i++) {
       const sender = Sender.fromConfig(
         `http::addr=${PROXY_HOST}:${MOCK_HTTP_PORT}`,
@@ -716,8 +715,6 @@ describe("Sender HTTP suite", function () {
     await Promise.all(promises);
     expect(mockHttp.numOfRequests).toBe(num);
 
-    // expect(sender.agent).toBeInstanceOf(Agent);
-
     for (const sender of senders) {
       await sender.close();
     }
@@ -726,7 +723,7 @@ describe("Sender HTTP suite", function () {
 });
 
 describe("Sender connection suite", function () {
-  async function createProxy(auth = false, tlsOptions = undefined) {
+  async function createProxy(auth = false, tlsOptions?: Record<string, unknown>) {
     const mockConfig = { auth: auth, assertions: true };
     const proxy = new MockProxy(mockConfig);
     await proxy.start(PROXY_PORT, tlsOptions);
@@ -735,7 +732,7 @@ describe("Sender connection suite", function () {
     return proxy;
   }
 
-  async function createSender(auth = undefined, secure = false) {
+  async function createSender(auth: SenderOptions['auth'], secure = false) {
     const sender = new Sender({
       protocol: secure ? "tcps" : "tcp",
       port: PROXY_PORT,
@@ -816,6 +813,7 @@ describe("Sender connection suite", function () {
       protocol: "tcp",
       port: PROXY_PORT,
       host: PROXY_HOST,
+      // @ts-expect-error invalid options
       ca: readFileSync("test/certs/ca/ca.crt"),
       jwk: JWK,
     });
@@ -828,6 +826,7 @@ describe("Sender connection suite", function () {
 
   it("can connect unauthenticated", async function () {
     const proxy = await createProxy();
+    // @ts-expect-error invalid options
     const sender = await createSender();
     await assertSentData(proxy, false, "");
     await sender.close();
@@ -849,6 +848,7 @@ describe("Sender connection suite", function () {
 
   it("can connect unauthenticated and send data to server", async function () {
     const proxy = await createProxy();
+    // @ts-expect-error invalid options
     const sender = await createSender();
     await sendData(sender);
     await assertSentData(
@@ -875,6 +875,7 @@ describe("Sender connection suite", function () {
 
   it("can connect unauthenticated and send data to server via secure connection", async function () {
     const proxy = await createProxy(false, proxyOptions);
+    // @ts-expect-error invalid options
     const sender = await createSender(null, true);
     await sendData(sender);
     await assertSentData(
@@ -929,6 +930,7 @@ describe("Sender connection suite", function () {
       port: PROXY_PORT,
       host: PROXY_HOST,
       auth: AUTH,
+      // @ts-expect-error invalid options
       ca: readFileSync("test/certs/ca/ca.crt"),
     });
     try {
@@ -988,6 +990,7 @@ describe("Sender connection suite", function () {
     ];
     const log = (level, message) => {
       expect(level).toBe("info");
+      // @ts-expect-error invalid options
       expect(message).toMatch(expectedMessages.shift());
     };
     const proxy = await createProxy();
@@ -1097,7 +1100,6 @@ describe("Sender message builder test suite (anything not covered in client inte
         .booleanColumn("boolCol", true)
         .timestampColumn("timestampCol", 1658484765000000, "foobar")
         .atNow();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("Unknown timestamp unit: foobar");
     }
@@ -1105,32 +1107,39 @@ describe("Sender message builder test suite (anything not covered in client inte
   });
 
   it("supports json object", async function () {
-    const pages = [];
+    const pages: Array<{
+      id: string;
+      gridId: string
+    }>[] = [];
     for (let i = 0; i < 4; i++) {
-      const pageProducts = [
-        {
-          id: "46022e96-076f-457f-b630-51b82b871618" + i,
-          gridId: "46022e96-076f-457f-b630-51b82b871618",
-        },
-        {
-          id: "55615358-4af1-4179-9153-faaa57d71e55",
-          gridId: "55615358-4af1-4179-9153-faaa57d71e55",
-        },
-        {
-          id: "365b9cdf-3d4e-4135-9cb0-f1a65601c840",
-          gridId: "365b9cdf-3d4e-4135-9cb0-f1a65601c840",
-        },
-        {
-          id: "0b67ddf2-8e69-4482-bf0c-bb987ee5c280",
-          gridId: "0b67ddf2-8e69-4482-bf0c-bb987ee5c280" + i,
-        },
-      ];
+      const pageProducts: Array<{
+        id: string;
+        gridId: string
+      }> = [
+          {
+            id: "46022e96-076f-457f-b630-51b82b871618" + i,
+            gridId: "46022e96-076f-457f-b630-51b82b871618",
+          },
+          {
+            id: "55615358-4af1-4179-9153-faaa57d71e55",
+            gridId: "55615358-4af1-4179-9153-faaa57d71e55",
+          },
+          {
+            id: "365b9cdf-3d4e-4135-9cb0-f1a65601c840",
+            gridId: "365b9cdf-3d4e-4135-9cb0-f1a65601c840",
+          },
+          {
+            id: "0b67ddf2-8e69-4482-bf0c-bb987ee5c280",
+            gridId: "0b67ddf2-8e69-4482-bf0c-bb987ee5c280" + i,
+          },
+        ];
       pages.push(pageProducts);
     }
 
     const sender = new Sender({
       protocol: "tcp",
       host: "host",
+      // @ts-expect-error - Technically it's a private field, but I'm not sure
       bufferSize: 256,
     });
     for (const p of pages) {
@@ -1142,9 +1151,9 @@ describe("Sender message builder test suite (anything not covered in client inte
     }
     expect(sender.toBufferView().toString()).toBe(
       'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716180\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2800\\"}]",boolCol=t\n' +
-        'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716181\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2801\\"}]",boolCol=t\n' +
-        'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716182\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2802\\"}]",boolCol=t\n' +
-        'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716183\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2803\\"}]",boolCol=t\n',
+      'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716181\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2801\\"}]",boolCol=t\n' +
+      'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716182\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2802\\"}]",boolCol=t\n' +
+      'tableName page_products="[{\\"id\\":\\"46022e96-076f-457f-b630-51b82b8716183\\",\\"gridId\\":\\"46022e96-076f-457f-b630-51b82b871618\\"},{\\"id\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\",\\"gridId\\":\\"55615358-4af1-4179-9153-faaa57d71e55\\"},{\\"id\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\",\\"gridId\\":\\"365b9cdf-3d4e-4135-9cb0-f1a65601c840\\"},{\\"id\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c280\\",\\"gridId\\":\\"0b67ddf2-8e69-4482-bf0c-bb987ee5c2803\\"}]",boolCol=t\n',
     );
     await sender.close();
   });
@@ -1297,7 +1306,6 @@ describe("Sender message builder test suite (anything not covered in client inte
         .booleanColumn("boolCol", true)
         .timestampColumn("timestampCol", 1658484765000000)
         .at(1658484769000000, "foobar");
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe("Unknown timestamp unit: foobar");
     }
@@ -1412,6 +1420,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       host: "host",
       init_buf_size: 1024,
     });
+    // @ts-expect-error invalid options
     expect(() => sender.table(23456)).toThrow(
       "Table name must be a string, received number",
     );
@@ -1427,7 +1436,7 @@ describe("Sender message builder test suite (anything not covered in client inte
     expect(() =>
       sender.table(
         "123456789012345678901234567890123456789012345678901234567890" +
-          "12345678901234567890123456789012345678901234567890123456789012345678",
+        "12345678901234567890123456789012345678901234567890123456789012345678",
       ),
     ).toThrow("Table name is too long, max length is 127");
     await sender.close();
@@ -1451,6 +1460,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       host: "host",
       init_buf_size: 1024,
     });
+    // @ts-expect-error invalid options
     expect(() => sender.table("tableName").symbol(12345.5656, "value")).toThrow(
       "Symbol name must be a string, received number",
     );
@@ -1476,6 +1486,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       init_buf_size: 1024,
     });
     expect(() =>
+      // @ts-expect-error invalid options
       sender.table("tableName").stringColumn(12345.5656, "value"),
     ).toThrow("Column name must be a string, received number");
     await sender.close();
@@ -1504,7 +1515,7 @@ describe("Sender message builder test suite (anything not covered in client inte
         .table("tableName")
         .stringColumn(
           "123456789012345678901234567890123456789012345678901234567890" +
-            "12345678901234567890123456789012345678901234567890123456789012345678",
+          "12345678901234567890123456789012345678901234567890123456789012345678",
           "value",
         ),
     ).toThrow("Column name is too long, max length is 127");
@@ -1518,6 +1529,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       init_buf_size: 1024,
     });
     expect(() =>
+      // @ts-expect-error invalid options
       sender.table("tableName").stringColumn("columnName", false),
     ).toThrow("Column value must be of type string, received boolean");
     await sender.close();
@@ -1639,6 +1651,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       init_buf_size: 1024,
     });
     try {
+      // @ts-expect-error invalid options
       await sender.table("tableName").symbol("name", "value").at("invalid_dts");
     } catch (e) {
       expect(e.message).toEqual(
@@ -1721,7 +1734,6 @@ describe("Sender message builder test suite (anything not covered in client inte
         .intColumn("intField", 125)
         .stringColumn("strField", "test")
         .atNow();
-      // fail('Expected error is not thrown');
     } catch (err) {
       expect(err.message).toBe(
         "Max buffer size is 48 bytes, requested buffer size: 64",
@@ -1748,7 +1760,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       .atNow();
     expect(sender.toBufferView().toString()).toBe(
       "tableName boolCol=t,timestampCol=1658484765000000t\n" +
-        "tableName boolCol=f,timestampCol=1658484766000000t\n",
+      "tableName boolCol=f,timestampCol=1658484766000000t\n",
     );
 
     sender.reset();
@@ -1778,9 +1790,9 @@ describe("Sender tests with containerized QuestDB instance", () => {
     return new Promise((resolve, reject) => {
       const req = http.request(options, (response) => {
         if (response.statusCode === HTTP_OK) {
-          const body = [];
+          const body: Uint8Array[] = [];
           response
-            .on("data", (data) => {
+            .on("data", (data: Uint8Array) => {
               body.push(data);
             })
             .on("end", () => {
@@ -1862,14 +1874,18 @@ describe("Sender tests with containerized QuestDB instance", () => {
     let createTableResult = await query(
       container,
       `CREATE TABLE ${tableName}(${getFieldsString(schema)}) TIMESTAMP (timestamp) PARTITION BY DAY BYPASS WAL;`,
-    );
+    ) as {
+      ddl: string;
+    };
     expect(createTableResult.ddl).toBe("OK");
 
     // alter table
     let alterTableResult = await query(
       container,
       `ALTER TABLE ${tableName} SET PARAM maxUncommittedRows = 1;`,
-    );
+    ) as {
+      ddl: string;
+    };
     expect(alterTableResult.ddl).toBe("OK");
 
     // ingest via client
@@ -2087,14 +2103,18 @@ describe("Sender tests with containerized QuestDB instance", () => {
     let createTableResult = await query(
       container,
       `CREATE TABLE ${tableName}(${getFieldsString(schema)}) TIMESTAMP (timestamp) PARTITION BY DAY BYPASS WAL;`,
-    );
+    ) as {
+      ddl: string
+    };
     expect(createTableResult.ddl).toBe("OK");
 
     // alter table
     let alterTableResult = await query(
       container,
       `ALTER TABLE ${tableName} SET PARAM maxUncommittedRows = 1;`,
-    );
+    ) as {
+      ddl: string
+    };
     expect(alterTableResult.ddl).toBe("OK");
 
     // ingest via client
@@ -2116,7 +2136,7 @@ describe("Sender tests with containerized QuestDB instance", () => {
     expect(selectResult.count).toBe(numOfRows);
     expect(selectResult.columns).toStrictEqual(schema);
 
-    const expectedData = [];
+    const expectedData: (string | number)[][] = [];
     for (let i = 0; i < numOfRows; i++) {
       expectedData.push(["us", i, "2022-07-22T10:12:45.000000Z"]);
     }
