@@ -9,7 +9,6 @@ import crypto from "node:crypto";
 
 import { validateTableName, validateColumnName } from "./validation";
 import { SenderOptions, HTTP, HTTPS, TCP, TCPS } from "./options";
-import { HeaderNames, HeaderRecord } from "undici/types/header";
 
 const HTTP_NO_CONTENT = 204; // success
 
@@ -361,7 +360,6 @@ class Sender {
       throw new Error("Port is not set");
     }
 
-    let self = this;
     return new Promise((resolve, reject) => {
       if (this.socket) {
         throw new Error("Sender connected already");
@@ -383,7 +381,7 @@ class Sender {
         .on("data", async (raw) => {
           data = !data ? raw : Buffer.concat([data, raw]);
           if (!authenticated) {
-            authenticated = await authenticate(self, data);
+            authenticated = await authenticate(this, data);
             if (authenticated) {
               resolve(true);
             }
@@ -396,26 +394,26 @@ class Sender {
             "info",
             `Successfully connected to ${(connectOptions as tls.ConnectionOptions).host}:${(connectOptions as tls.ConnectionOptions).port}`,
           );
-          if (self.jwk) {
+          if (this.jwk) {
             this.log(
               "info",
               `Authenticating with ${(connectOptions as tls.ConnectionOptions).host}:${(connectOptions as tls.ConnectionOptions).port}`,
             );
-            await self.socket.write(`${self.jwk.kid}\n`, (err) => {
+            await this.socket.write(`${this.jwk.kid}\n`, (err) => {
               if (err) {
                 reject(err);
               }
             });
           } else {
             authenticated = true;
-            if (!self.secure || !self.tlsVerify) {
+            if (!this.secure || !this.tlsVerify) {
               resolve(true);
             }
           }
         })
         .on("error", (err) => {
-          self.log("error", err);
-          if (err.code !== "SELF_SIGNED_CERT_IN_CHAIN" || self.tlsVerify) {
+          this.log("error", err);
+          if (err.code !== "SELF_SIGNED_CERT_IN_CHAIN" || this.tlsVerify) {
             reject(err);
           }
         });
@@ -522,7 +520,7 @@ class Sender {
    * @param {any} value - Symbol value, toString() will be called to extract the actual symbol value from the parameter.
    * @return {Sender} Returns with a reference to this sender.
    */
-  symbol(name: string, value: any): Sender {
+  symbol<T = unknown>(name: string, value: T): Sender {
     if (typeof name !== "string") {
       throw new Error(`Symbol name must be a string, received ${typeof name}`);
     }
@@ -723,7 +721,11 @@ async function authenticate(sender, challenge): Promise<boolean> {
       sender.socket.write(
         `${Buffer.from(signature).toString("base64")}\n`,
         (err) => {
-          err ? reject(err) : resolve(true);
+          if (err) {
+            reject(err);
+          } else {
+            resolve(true);
+          }
         },
       );
     });
@@ -869,7 +871,11 @@ async function autoFlush(sender) {
 function sendTcp(sender, data) {
   return new Promise((resolve, reject) => {
     sender.socket.write(data, (err) => {
-      err ? reject(err) : sender.doResolve(resolve);
+      if (err) {
+        reject(err);
+      } else {
+        sender.doResolve(resolve)
+      }
     });
   });
 }

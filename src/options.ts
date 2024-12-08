@@ -312,15 +312,15 @@ function validateConfigValue(key: string, value: string) {
   }
 }
 
-function parseProtocol(options: { protocol: any; }, configString: string | string[]) {
-  let index = configString.indexOf("::");
+function parseProtocol(options: SenderOptions, configString: string | string[]) {
+  const index = configString.indexOf("::");
   if (index < 0) {
     throw new Error(
       "Missing protocol, configuration string format: 'protocol::key1=value1;key2=value2;key3=value3;'",
     );
   }
 
-  options.protocol = configString.slice(0, index);
+  options.protocol = configString.slice(0, index) as string;
   switch (options.protocol) {
     case HTTP:
     case HTTPS:

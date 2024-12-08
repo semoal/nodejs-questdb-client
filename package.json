@@ -6,9 +6,8 @@
     "test": "vitest",
     "build": "bunchee",
     "eslint": "eslint src/**",
-    "docs": "jsdoc src/sender.js src/options.js README.md -d docs",
-    "-----DEPRECATED": "-----",
-    "types": "npx -p typescript tsc --skipLibCheck --declaration --allowJs --emitDeclarationOnly --outDir types"
+    "typecheck": "tsc --noEmit",
+    "docs": "jsdoc src/sender.js src/options.js README.md -d docs"
   },
   "files": [
     "dist"
@@ -34,10 +33,13 @@
   "license": "Apache-2.0",
   "homepage": "https://questdb.github.io/nodejs-questdb-client",
   "devDependencies": {
-    "bunchee": "^6.0.0",
-    "eslint": "^8.50.0",
+    "@eslint/js": "^9.16.0",
+    "bunchee": "^6.0.3",
+    "eslint": "^9.16.0",
     "prettier": "3.4.1",
     "testcontainers": "^10.15.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.17.0",
     "vitest": "^2.1.8"
   },
   "dependencies": {

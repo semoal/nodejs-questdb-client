@@ -5,7 +5,7 @@
  * @param {string} name - The table name to validate.
  * @param {number} maxNameLength - The maximum length of table names.
  */
-function validateTableName(name, maxNameLength) {
+function validateTableName(name: string, maxNameLength: number) {
   const len = name.length;
   if (len > maxNameLength) {
     throw new Error(`Table name is too long, max length is ${maxNameLength}`);
@@ -14,7 +14,7 @@ function validateTableName(name, maxNameLength) {
     throw new Error("Empty string is not allowed as table name");
   }
   for (let i = 0; i < len; i++) {
-    let ch = name[i];
+    const ch = name[i];
     switch (ch) {
       case ".":
         if (i === 0 || i === len - 1 || name[i - 1] === ".")
@@ -71,7 +71,7 @@ function validateTableName(name, maxNameLength) {
  * @param {string} name - The column name to validate.
  * @param {number} maxNameLength - The maximum length of column names.
  */
-function validateColumnName(name, maxNameLength) {
+function validateColumnName(name: string, maxNameLength: number) {
   const len = name.length;
   if (len > maxNameLength) {
     throw new Error(`Column name is too long, max length is ${maxNameLength}`);
