@@ -32,10 +32,10 @@ jobs:
       - name: Tests
         run: pnpm test
 
-			- name: Publish
-				uses: JS-DevTools/npm-publish@v3
-				with:
-					token: ${{ secrets.CI_TOKEN }}
-					access: public
-					strategy: all
-					package: package.json
+      - name: Publish
+        uses: JS-DevTools/npm-publish@v3
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+          access: public
+          strategy: all
+          package: package.json
