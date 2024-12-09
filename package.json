@@ -1,13 +1,14 @@
 {
   "name": "@sergiomoreno/questdb",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "QuestDB Node.js Client",
   "scripts": {
     "test": "vitest",
     "build": "bunchee",
     "eslint": "eslint src/**",
     "typecheck": "tsc --noEmit",
-    "docs": "jsdoc src/sender.js src/options.js README.md -d docs"
+    "docs": "pnpm run build && jsdoc ./dist/cjs/index.js README.md -d docs",
+    "preview:docs": "serve docs"
   },
   "files": [
     "dist"
@@ -36,7 +37,9 @@
     "@eslint/js": "^9.16.0",
     "bunchee": "^6.0.3",
     "eslint": "^9.16.0",
+    "jsdoc": "^4.0.4",
     "prettier": "3.4.1",
+    "serve": "^14.2.4",
     "testcontainers": "^10.15.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.17.0",

@@ -1,12 +1,12 @@
 // @ts-check
 import { readFileSync } from "node:fs";
 import { Buffer } from "node:buffer";
-import { log } from "./logging";
 import net from "node:net";
 import tls from "node:tls";
-import { Agent, RetryAgent } from "undici";
 import crypto from "node:crypto";
+import { Agent, RetryAgent } from "undici";
 
+import { log } from "./logging";
 import { validateTableName, validateColumnName } from "./validation";
 import { SenderOptions, HTTP, HTTPS, TCP, TCPS } from "./options";
 
@@ -95,10 +95,9 @@ const RETRIABLE_STATUS_CODES = [500, 503, 504, 507, 509, 523, 524, 529, 599];
  * The custom HTTP(S) agent option becomes handy if there is a need to modify the default options set for the
  * HTTP(S) connections. A popular setting would be disabling persistent connections, in this case an agent can be
  * passed to the Sender with <i>keepAlive</i> set to <i>false</i>. <br>
- * For example: <i>Sender.fromConfig(`http::addr=host:port`, { agent: new http.Agent({ keepAlive: false })})</i> <br>
+ * For example: <i>Sender.fromConfig(`http::addr=host:port`, { agent: new undici.Agent({ connect: { keepAlive: false } })})</i> <br>
  * If no custom agent is configured, the Sender will use its own agent which overrides some default values
- * of <i>http.Agent</i>/<i>https.Agent</i>. The Sender's own agent uses persistent connections with 1 minute idle
- * timeout, and limits the number of open connections to the server, which is set to 256 for each host.
+ * of <i>undici.Agent</i>. The Sender's own agent uses persistent connections with 1 minute idle timeout, pipelines requests default to 1.
  * </p>
  */
 class Sender {
@@ -265,8 +264,8 @@ class Sender {
    * @param {object} extraOptions - Optional extra configuration. <br>
    * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
    * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
-   * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
-   * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
+   * - 'agent' is a custom Undici agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
+   * A <i>undici.Agent</i>  object is expected.
    *
    * @return {Sender} A Sender object initialized from the provided configuration string.
    */
@@ -282,8 +281,8 @@ class Sender {
    * @param {object} extraOptions - Optional extra configuration. <br>
    * - 'log' is a logging function used by the <a href="Sender.html">Sender</a>. <br>
    * Prototype: <i>(level: 'error'|'warn'|'info'|'debug', message: string) => void</i>. <br>
-   * - 'agent' is a custom http/https agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
-   * A <i>http.Agent</i> or <i>https.Agent</i> object is expected.
+   * - 'agent' is a custom Undici agent used by the <a href="Sender.html">Sender</a> when http/https transport is used. <br>
+   * A <i>undici.Agent</i>  object is expected.
    *
    * @return {Sender} A Sender object initialized from the <b>QDB_CLIENT_CONF</b> environment variable.
    */
@@ -634,7 +633,7 @@ class Sender {
    * @param {string} [unit=us] - Timestamp unit. Supported values: 'ns' - nanoseconds, 'us' - microseconds, 'ms' - milliseconds. Defaults to 'us'.
    * @return {Sender} Returns with a reference to this sender.
    */
-  timestampColumn(name: string, value: number | bigint, unit: string = "us"): Sender {
+  timestampColumn(name: string, value: number | bigint, unit: 'ns' | 'us' | 'ms' = "us"): Sender {
     if (typeof value !== "bigint" && !Number.isInteger(value)) {
       throw new Error(`Value must be an integer or BigInt, received ${value}`);
     }
@@ -654,7 +653,7 @@ class Sender {
    * @param {number | bigint} timestamp - Designated epoch timestamp, accepts numbers or BigInts.
    * @param {string} [unit=us] - Timestamp unit. Supported values: 'ns' - nanoseconds, 'us' - microseconds, 'ms' - milliseconds. Defaults to 'us'.
    */
-  async at(timestamp: number | bigint, unit: string = "us") {
+  async at(timestamp: number | bigint, unit: 'ns' | 'us' | 'ms' = "us") {
     if (!this.hasSymbols && !this.hasColumns) {
       throw new Error(
         "The row must have a symbol or column set before it is closed",
@@ -694,26 +693,26 @@ class Sender {
   }
 }
 
-function isBoolean(value) {
+function isBoolean(value: unknown): value is boolean {
   return typeof value === "boolean";
 }
 
-function isInteger(value, lowerBound) {
+function isInteger(value: unknown, lowerBound: number): value is number {
   return (
     typeof value === "number" && Number.isInteger(value) && value >= lowerBound
   );
 }
 
-async function authenticate(sender, challenge): Promise<boolean> {
+async function authenticate(sender: Sender, challenge: Buffer): Promise<boolean> {
   // Check for trailing \n which ends the challenge
-  if (challenge.slice(-1).readInt8() === 10) {
+  if (challenge.subarray(-1).readInt8() === 10) {
     const keyObject = crypto.createPrivateKey({
       key: sender.jwk,
       format: "jwk",
     });
     const signature = crypto.sign(
       "RSA-SHA256",
-      challenge.slice(0, challenge.length - 1),
+      challenge.subarray(0, challenge.length - 1),
       keyObject,
     );
 
@@ -733,17 +732,26 @@ async function authenticate(sender, challenge): Promise<boolean> {
   return false;
 }
 
-function startNewRow(sender) {
+function startNewRow(sender: Sender) {
   sender.endOfLastRow = sender.position;
   sender.hasTable = false;
   sender.hasSymbols = false;
   sender.hasColumns = false;
 }
 
-function createRequestOptions(sender, data) {
+type InternalHttpOptions = {
+  hostname: string;
+  port: number;
+  agent: Agent;
+  protocol: string;
+  path: string;
+  method: string;
+  timeout: number;
+}
+function createRequestOptions(sender: Sender, data: Buffer): InternalHttpOptions {
   const timeoutMillis =
     (data.length / sender.requestMinThroughput) * 1000 + sender.requestTimeout;
-  const options = {
+  const options: InternalHttpOptions = {
     hostname: sender.host,
     port: sender.port,
     agent: sender.agent,
@@ -756,7 +764,7 @@ function createRequestOptions(sender, data) {
   return options;
 }
 
-async function sendHttp(sender, options, data, retryTimeout) {
+async function sendHttp(sender: Sender, options: InternalHttpOptions, data: Buffer, retryTimeout: number) {
   const retryBegin = Date.now();
   const headers: Record<string, string> = {};
 
@@ -811,22 +819,16 @@ async function sendHttp(sender, options, data, retryTimeout) {
   try {
     const { statusCode, body } = await dispatcher.request({
       origin: `${options.protocol}://${options.hostname}:${options.port}`,
-      path: `/write?precision=n`,
+      path: options.path,
       method: options.method,
       headers,
       body: data,
       headersTimeout: sender.requestTimeout,
     });
 
-    // Collect the response body
-    const chunks = [];
-    for await (const chunk of body) {
-      chunks.push(chunk);
-    }
-    const responseBody = Buffer.concat(chunks);
-
+    const responseBody = await body.arrayBuffer();
     if (statusCode === HTTP_NO_CONTENT) {
-      if (responseBody.length > 0) {
+      if (responseBody.byteLength > 0) {
         sender.log(
           "warn",
           `Unexpected message from server: ${responseBody.toString()}`,
@@ -855,7 +857,7 @@ async function sendHttp(sender, options, data, retryTimeout) {
   }
 }
 
-async function autoFlush(sender) {
+async function autoFlush(sender: Sender) {
   if (
     sender.autoFlush &&
     sender.pendingRowCount > 0 &&
@@ -868,7 +870,7 @@ async function autoFlush(sender) {
   }
 }
 
-function sendTcp(sender, data) {
+function sendTcp(sender: Sender, data: Buffer) {
   return new Promise((resolve, reject) => {
     sender.socket.write(data, (err) => {
       if (err) {
@@ -880,7 +882,7 @@ function sendTcp(sender, data) {
   });
 }
 
-function checkCapacity(sender, data, base = 0) {
+function checkCapacity(sender: Sender, data: string[], base = 0) {
   let length = base;
   for (const str of data) {
     length += Buffer.byteLength(str, "utf8");
@@ -894,7 +896,7 @@ function checkCapacity(sender, data, base = 0) {
   }
 }
 
-function compact(sender) {
+function compact(sender: Sender) {
   if (sender.endOfLastRow > 0) {
     sender.buffer.copy(sender.buffer, 0, sender.endOfLastRow, sender.position);
     sender.position = sender.position - sender.endOfLastRow;
@@ -905,7 +907,7 @@ function compact(sender) {
   }
 }
 
-function writeColumn(sender, name, value, writeValue, valueType?: string | null) {
+function writeColumn(sender: Sender, name: string, value: unknown, writeValue: () => void, valueType?: string | null) {
   if (typeof name !== "string") {
     throw new Error(`Column name must be a string, received ${typeof name}`);
   }
@@ -926,7 +928,7 @@ function writeColumn(sender, name, value, writeValue, valueType?: string | null)
   sender.hasColumns = true;
 }
 
-function write(sender, data) {
+function write(sender: Sender, data: string) {
   sender.position += sender.buffer.write(data, sender.position);
   if (sender.position > sender.bufferSize) {
     throw new Error(
@@ -935,7 +937,7 @@ function write(sender, data) {
   }
 }
 
-function writeEscaped(sender, data, quoted = false) {
+function writeEscaped(sender: Sender, data: string, quoted = false) {
   for (const ch of data) {
     if (ch > "\\") {
       write(sender, ch);
@@ -972,7 +974,7 @@ function writeEscaped(sender, data, quoted = false) {
   }
 }
 
-function timestampToMicros(timestamp, unit) {
+function timestampToMicros(timestamp: bigint, unit: "ns" | "us" | "ms") {
   switch (unit) {
     case "ns":
       return timestamp / 1000n;
@@ -985,7 +987,7 @@ function timestampToMicros(timestamp, unit) {
   }
 }
 
-function timestampToNanos(timestamp, unit) {
+function timestampToNanos(timestamp: bigint, unit: "ns" | "us" | "ms") {
   switch (unit) {
     case "ns":
       return timestamp;
@@ -998,7 +1000,14 @@ function timestampToNanos(timestamp, unit) {
   }
 }
 
-function replaceDeprecatedOptions(options) {
+
+type DeprecatedOptions = {
+  /** @deprecated */
+  copyBuffer?: boolean;
+  /** @deprecated */
+  bufferSize?: number;
+}
+function replaceDeprecatedOptions(options: SenderOptions & DeprecatedOptions) {
   // deal with deprecated options
   if (options.copyBuffer) {
     options.copy_buffer = options.copyBuffer;
@@ -1010,7 +1019,7 @@ function replaceDeprecatedOptions(options) {
   }
 }
 
-function constructAuth(options) {
+function constructAuth(options: SenderOptions) {
   if (!options.username && !options.token && !options.password) {
     // no intention to authenticate
     return;
@@ -1028,7 +1037,7 @@ function constructAuth(options) {
   };
 }
 
-function constructJwk(options) {
+function constructJwk(options: SenderOptions) {
   if (options.auth) {
     if (!options.auth.keyId) {
       throw new Error(

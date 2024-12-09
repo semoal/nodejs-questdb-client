@@ -1,18 +1,12 @@
-name: build
+name: publish
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
-    name: Build with Node.js ${{ matrix.node-version }}
+    name: Publish
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20, 22, latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,7 +16,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22
 
       - uses: pnpm/action-setup@v4
         with:
@@ -37,3 +31,11 @@ jobs:
 
       - name: Tests
         run: pnpm test
+
+			- name: Publish
+				uses: JS-DevTools/npm-publish@v3
+				with:
+					token: ${{ secrets.CI_TOKEN }}
+					access: public
+					strategy: all
+					package: package.json

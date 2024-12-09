@@ -2,13 +2,25 @@
 
 ## Requirements
 
-The client requires Node.js v16 or newer version.
+The client requires Node.js v20 or newer version.
 
 ## Installation
 
 ```shell
+# With npm
 npm i -s @questdb/nodejs-client
+# With yarn
+yarn add @questdb/nodejs-client
+# With pnpm
+pnpm add @questdb/nodejs-client
 ```
+
+## Compatibility table
+
+| QuestDB version | Node.js client version | HTTP Agent   |
+| --------------- | ---------------------- | ------------ |
+| ^5.0.0          | >=v20.X.X              | Undici Agent |
+| ^4.0.0          | <v20.X.X               | Http.Agent   |
 
 ## Configuration options
 
@@ -23,7 +35,7 @@ For more details, please, check the <a href="https://questdb.github.io/nodejs-qu
 ### Basic API usage
 
 ```javascript
-const { Sender } = require("@questdb/nodejs-client");
+import { Sender } from "@questdb/nodejs-client";
 
 async function run() {
   // create a sender using HTTP protocol
@@ -53,7 +65,7 @@ run().then(console.log).catch(console.error);
 ### Authentication and secure connection
 
 ```javascript
-const { Sender } = require("@questdb/nodejs-client");
+import { Sender } from "@questdb/nodejs-client";
 
 async function run() {
   // create a sender using HTTPS protocol with username and password authentication
@@ -109,7 +121,7 @@ run().catch(console.error);
 ### Worker threads example
 
 ```javascript
-const { Sender } = require("@questdb/nodejs-client");
+import { Sender } from "@questdb/nodejs-client";
 const {
   Worker,
   isMainThread,
