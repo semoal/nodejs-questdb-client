@@ -29,6 +29,10 @@ pnpm run test
 
 - Some tests use mock servers and certificates located in the `test/certs` directory
 
+> You can generate the certificates by running the `generateCerts.sh` script in the `scripts` directory. The script requires two arguments: the output directory and the password for the certificates.
+`./scripts/generateCerts.sh . questdbPwd123`
+
+
 ## Code Style and Quality
 
 1. The project uses TypeScript. Make sure your code is properly typed.

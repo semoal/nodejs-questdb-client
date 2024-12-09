@@ -1013,8 +1013,8 @@ describe("Sender connection suite", function () {
 });
 
 describe("Client interop test suite", function () {
-  it.skip("runs client tests as per json test config", async function () {
-    let testCases = JSON.parse(
+  it("runs client tests as per json test config", async function () {
+    const testCases = JSON.parse(
       readFileSync(
         "./questdb-client-test/ilp-client-interop-test.json",
       ).toString(),
@@ -1054,7 +1054,7 @@ describe("Client interop test suite", function () {
           }
         }
         await sender.atNow();
-      } catch (e) {
+      } catch {
         if (testCase.result.status !== "ERROR") {
           // fail('Did not expect error: ' + e.message);
           break;
@@ -1098,6 +1098,7 @@ describe("Sender message builder test suite (anything not covered in client inte
       await sender
         .table("tableName")
         .booleanColumn("boolCol", true)
+        // @ts-expect-error - Testing invalid options
         .timestampColumn("timestampCol", 1658484765000000, "foobar")
         .atNow();
     } catch (err) {
@@ -1305,6 +1306,7 @@ describe("Sender message builder test suite (anything not covered in client inte
         .table("tableName")
         .booleanColumn("boolCol", true)
         .timestampColumn("timestampCol", 1658484765000000)
+        // @ts-expect-error - Testing invalid options
         .at(1658484769000000, "foobar");
     } catch (err) {
       expect(err.message).toBe("Unknown timestamp unit: foobar");
@@ -1871,7 +1873,7 @@ describe("Sender tests with containerized QuestDB instance", () => {
     ];
 
     // create table
-    let createTableResult = await query(
+    const createTableResult = await query(
       container,
       `CREATE TABLE ${tableName}(${getFieldsString(schema)}) TIMESTAMP (timestamp) PARTITION BY DAY BYPASS WAL;`,
     ) as {
@@ -1880,7 +1882,7 @@ describe("Sender tests with containerized QuestDB instance", () => {
     expect(createTableResult.ddl).toBe("OK");
 
     // alter table
-    let alterTableResult = await query(
+    const alterTableResult = await query(
       container,
       `ALTER TABLE ${tableName} SET PARAM maxUncommittedRows = 1;`,
     ) as {
@@ -2100,7 +2102,7 @@ describe("Sender tests with containerized QuestDB instance", () => {
     ];
 
     // create table
-    let createTableResult = await query(
+    const createTableResult = await query(
       container,
       `CREATE TABLE ${tableName}(${getFieldsString(schema)}) TIMESTAMP (timestamp) PARTITION BY DAY BYPASS WAL;`,
     ) as {
@@ -2109,7 +2111,7 @@ describe("Sender tests with containerized QuestDB instance", () => {
     expect(createTableResult.ddl).toBe("OK");
 
     // alter table
-    let alterTableResult = await query(
+    const alterTableResult = await query(
       container,
       `ALTER TABLE ${tableName} SET PARAM maxUncommittedRows = 1;`,
     ) as {
