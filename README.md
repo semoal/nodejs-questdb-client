@@ -19,8 +19,8 @@ pnpm add @questdb/nodejs-client
 
 | QuestDB version | Node.js client version | HTTP Agent   |
 | --------------- | ---------------------- | ------------ |
-| ^5.0.0          | >=v20.X.X              | Undici Agent |
-| ^4.0.0          | <v20.X.X               | Http.Agent   |
+| ^4.0.0          | >=v20.X.X              | Undici Agent |
+| ^3.0.0          | <v20.X.X               | Http.Agent   |
 
 ## Configuration options
 

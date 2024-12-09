@@ -1,6 +1,6 @@
 {
-  "name": "@sergiomoreno/questdb",
-  "version": "5.0.0",
+  "name": "@questdb/nodejs-client",
+  "version": "4.0.0",
   "description": "QuestDB Node.js Client",
   "scripts": {
     "test": "vitest",
